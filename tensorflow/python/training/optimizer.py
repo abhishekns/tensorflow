@@ -152,6 +152,9 @@ class Optimizer(object):
     #  {slot_name : { variable_to_train: slot_for_the_variable, ...}, ... }
     self._slots = {}
 
+  def get_name(self):
+    return self._name
+
   def minimize(self, loss, global_step=None, var_list=None,
                gate_gradients=GATE_OP, aggregation_method=None,
                colocate_gradients_with_ops=False, name=None,
@@ -296,7 +299,7 @@ class Optimizer(object):
     with ops.control_dependencies(None):
       self._create_slots(var_list)
     update_ops = []
-    with ops.op_scope([], name, self._name) as name:
+    with ops.name_scope(name, self._name) as name:
       self._prepare()
       for grad, var in grads_and_vars:
         if grad is None:

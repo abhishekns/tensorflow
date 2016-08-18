@@ -230,8 +230,11 @@ Status SingleExampleProtoToTensors(
     const Tensor& default_value = feature_config.default_value;
     bool required = (default_value.NumElements() == 0);
     const auto& feature_found = feature_dict.find(key);
+    const bool feature_has_data =  // Found key & data type is set
+        (feature_found != feature_dict.end() &&
+         (feature_found->second.kind_case() != Feature::KIND_NOT_SET));
 
-    bool required_ok = (feature_found != feature_dict.end()) || !required;
+    const bool required_ok = feature_has_data || !required;
     if (!required_ok) {
       return errors::InvalidArgument("Name: ", example_name, ", Feature: ", key,
                                      " is required but could not be found.");
@@ -239,7 +242,7 @@ Status SingleExampleProtoToTensors(
 
     // Perform the FeatureDenseCopy into the output dense_values tensor (if
     // the value is present).
-    if (feature_found != feature_dict.end()) {
+    if (feature_has_data) {
       const Feature& f = feature_found->second;
       bool types_match;
       TF_RETURN_IF_ERROR(CheckTypesMatch(f, dtype, &types_match));
@@ -266,7 +269,7 @@ Status SingleExampleProtoToTensors(
     const DataType& dtype = feature_config.dtype;
     const auto& feature_found = feature_dict.find(key);
 
-    bool feature_has_data =  // Found key & data type is set
+    const bool feature_has_data =  // Found key & data type is set
         (feature_found != feature_dict.end() &&
          (feature_found->second.kind_case() != Feature::KIND_NOT_SET));
 
@@ -310,16 +313,17 @@ Status GetSparseTensorShapes(const VarLenFeature& var_len_feature,
 }
 
 Status BatchExampleProtoToTensors(
-    const std::vector<Example>& examples, const std::vector<string>& names,
+    const std::vector<const Example*>& examples,
+    const std::vector<string>& names,
     const std::vector<FixedLenFeature>& fixed_len_features,
     const std::vector<VarLenFeature>& var_len_features, Allocator* allocator,
     std::vector<Tensor>* output_dense_values_tensor,
     std::vector<Tensor>* output_sparse_indices_tensor,
     std::vector<Tensor>* output_sparse_values_tensor,
     std::vector<Tensor>* output_sparse_shapes_tensor) {
-  int batch_size = examples.size();
+  const int batch_size = examples.size();
 
-  bool has_names = (names.size() > 0);
+  const bool has_names = (names.size() > 0);
   if (has_names) {
     if (names.size() != examples.size()) {
       return errors::InvalidArgument(
@@ -353,7 +357,7 @@ Status BatchExampleProtoToTensors(
   }
 
   for (int b = 0; b < examples.size(); ++b) {
-    const Example& ex = examples[b];
+    const Example& ex = *(examples[b]);
     const string& example_name = (has_names) ? names[b] : "<unknown>";
     SingleExampleProtoToTensors(
         ex, example_name, b, fixed_len_features, var_len_features,
@@ -391,6 +395,67 @@ Status BatchExampleProtoToTensors(
           sparse_values_tensor[b], b, offset, sp_indices_d, sp_values_d);
       offset += num_elements;
     }
+  }
+  return Status::OK();
+}
+
+Status ParseSingleExampleAttrs::FinishInit() {
+  if (static_cast<size_t>(num_sparse) != sparse_types.size()) {
+    return errors::InvalidArgument("len(sparse_keys) != len(sparse_types)");
+  }
+  if (static_cast<size_t>(num_dense) != dense_types.size()) {
+    return errors::InvalidArgument("len(dense_keys) != len(dense_types)");
+  }
+  if (static_cast<size_t>(num_dense) != dense_shapes.size()) {
+    return errors::InvalidArgument("len(dense_keys) != len(dense_shapes)");
+  }
+  if (num_dense > std::numeric_limits<int32>::max()) {
+    return errors::InvalidArgument("num_dense_ too large");
+  }
+  for (const DataType& type : dense_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
+  }
+  for (const DataType& type : sparse_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
+  }
+  return Status::OK();
+}
+
+Status ParseSingleSequenceExampleAttrs::FinishInit() {
+  if (static_cast<size_t>(num_context_sparse) != context_sparse_types.size()) {
+    return errors::InvalidArgument(
+        "len(context_sparse_keys) != len(context_sparse_types)");
+  }
+  if (static_cast<size_t>(num_context_dense) != context_dense_types.size()) {
+    return errors::InvalidArgument(
+        "len(context_dense_keys) != len(context_dense_types)");
+  }
+  if (static_cast<size_t>(num_context_dense) != context_dense_shapes.size()) {
+    return errors::InvalidArgument(
+        "len(context_dense_keys) != len(context_dense_shapes)");
+  }
+  if (static_cast<size_t>(num_feature_list_sparse) !=
+      feature_list_sparse_types.size()) {
+    return errors::InvalidArgument(
+        "len(feature_list_sparse_keys) != len(feature_list_sparse_types)");
+  }
+  if (static_cast<size_t>(num_feature_list_dense) !=
+      feature_list_dense_types.size()) {
+    return errors::InvalidArgument(
+        "len(feature_list_dense_keys) != "
+        "len(feature_list_dense_types)");
+  }
+  for (const DataType& type : context_dense_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
+  }
+  for (const DataType& type : context_sparse_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
+  }
+  for (const DataType& type : feature_list_dense_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
+  }
+  for (const DataType& type : feature_list_sparse_types) {
+    TF_RETURN_IF_ERROR(CheckValidType(type));
   }
   return Status::OK();
 }

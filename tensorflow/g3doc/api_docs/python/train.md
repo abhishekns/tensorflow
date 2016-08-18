@@ -274,6 +274,15 @@ Use `get_slot_names()` to get the list of slot names created by the
 
 
 
+#### Other Methods
+- - -
+
+#### `tf.train.Optimizer.get_name()` {#Optimizer.get_name}
+
+
+
+
+
 
 - - -
 
@@ -365,7 +374,7 @@ Optimizer that implements the Momentum algorithm.
 
 - - -
 
-#### `tf.train.MomentumOptimizer.__init__(learning_rate, momentum, use_locking=False, name='Momentum')` {#MomentumOptimizer.__init__}
+#### `tf.train.MomentumOptimizer.__init__(learning_rate, momentum, use_locking=False, name='Momentum', use_nesterov=False)` {#MomentumOptimizer.__init__}
 
 Construct a new Momentum optimizer.
 
@@ -829,7 +838,7 @@ decayed_learning_rate = learning_rate *
                         decay_rate ^ (global_step / decay_steps)
 ```
 
-If the argument `staircase` is `True`, then `global_step /decay_steps` is an
+If the argument `staircase` is `True`, then `global_step / decay_steps` is an
 integer division and the decayed learning rate follows a staircase function.
 
 Example: decay every 100000 steps with a base of 0.96:
@@ -842,7 +851,7 @@ learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                            100000, 0.96, staircase=True)
 # Passing global_step to minimize() will increment it at each step.
 learning_step = (
-    tf.GradientDescentOptimizer(learning_rate)
+    tf.train.GradientDescentOptimizer(learning_rate)
     .minimize(...my loss..., global_step=global_step)
 )
 ```
@@ -858,8 +867,9 @@ learning_step = (
     Must be positive.  See the decay computation above.
 *  <b>`decay_rate`</b>: A scalar `float32` or `float64` `Tensor` or a
     Python number.  The decay rate.
-*  <b>`staircase`</b>: Boolean.  It `True` decay the learning rate at discrete intervals.
-*  <b>`name`</b>: String.  Optional name of the operation.  Defaults to 'ExponentialDecay'
+*  <b>`staircase`</b>: Boolean.  It `True` decay the learning rate at discrete intervals
+*  <b>`name`</b>: String.  Optional name of the operation.  Defaults to
+    'ExponentialDecay'
 
 ##### Returns:
 
@@ -1009,7 +1019,7 @@ variables.
 
 
 *  <b>`var_list`</b>: A list of Variable or Tensor objects. The variables
-    and Tensors must be of types float32 or float64.
+    and Tensors must be of types float16, float32, or float64.
 
 ##### Returns:
 
@@ -1018,7 +1028,7 @@ variables.
 ##### Raises:
 
 
-*  <b>`TypeError`</b>: If the arguments are not all float32 or float64.
+*  <b>`TypeError`</b>: If the arguments are not all float16, float32, or float64.
 *  <b>`ValueError`</b>: If the moving average of one of the variables is already
     being computed.
 
@@ -1214,9 +1224,20 @@ except Exception:
 ```
 - - -
 
-#### `tf.train.Coordinator.__init__()` {#Coordinator.__init__}
+#### `tf.train.Coordinator.__init__(clean_stop_exception_types=None)` {#Coordinator.__init__}
 
 Create a new Coordinator.
+
+##### Args:
+
+
+*  <b>`clean_stop_exception_types`</b>: Optional tuple of Exception types that should
+    cause a clean stop of the coordinator. If an exception of one of these
+    types is reported to `request_stop(ex)` the coordinator will behave as
+    if `request_stop(None)` was called.  Defaults to
+    `(tf.errors.OutOfRangeError,)` which is used by input queues to signal
+    the end of input. When feeding training data from a Python iterator it
+    is common to add `StopIteration` to this list.
 
 
 - - -
@@ -1230,11 +1251,14 @@ After this is called, calls to `should_stop()` will return `False`.
 
 - - -
 
-#### `tf.train.Coordinator.join(threads, stop_grace_period_secs=120)` {#Coordinator.join}
+#### `tf.train.Coordinator.join(threads=None, stop_grace_period_secs=120)` {#Coordinator.join}
 
 Wait for threads to terminate.
 
-Blocks until all `threads` have terminated or `request_stop()` is called.
+This call blocks until a set of threads have terminated.  The set of thread
+is the union of the threads passed in the `threads` argument and the list
+of threads that registered with the coordinator by calling
+`Coordinator.register_thread()`.
 
 After the threads stop, if an `exc_info` was passed to `request_stop`, that
 exception is re-raised.
@@ -1248,7 +1272,8 @@ that `RuntimeError`.
 ##### Args:
 
 
-*  <b>`threads`</b>: List of `threading.Threads`. The started threads to join.
+*  <b>`threads`</b>: List of `threading.Threads`. The started threads to join in
+    addition to the registered threads.
 *  <b>`stop_grace_period_secs`</b>: Number of seconds given to threads to stop after
     `request_stop()` has been called.
 
@@ -1257,6 +1282,25 @@ that `RuntimeError`.
 
 *  <b>`RuntimeError`</b>: If any thread is still alive after `request_stop()`
     is called and the grace period expires.
+
+
+- - -
+
+#### `tf.train.Coordinator.joined` {#Coordinator.joined}
+
+
+
+
+- - -
+
+#### `tf.train.Coordinator.register_thread(thread)` {#Coordinator.register_thread}
+
+Register a thread to join.
+
+##### Args:
+
+
+*  <b>`thread`</b>: A Python thread to join.
 
 
 - - -
@@ -1578,7 +1622,7 @@ communicate with any other server in the same cluster.
 
 - - -
 
-#### `tf.train.Server.__init__(server_or_cluster_def, job_name=None, task_index=None, protocol=None, start=True)` {#Server.__init__}
+#### `tf.train.Server.__init__(server_or_cluster_def, job_name=None, task_index=None, protocol=None, config=None, start=True)` {#Server.__init__}
 
 Creates a new server with the given definition.
 
@@ -1601,6 +1645,8 @@ override any information provided in `server_or_cluster_def`.
 *  <b>`protocol`</b>: (Optional.) Specifies the protocol to be used by the server.
     Acceptable values include `"grpc"`. Defaults to the value in
     `server_or_cluster_def`, if specified. Otherwise defaults to `"grpc"`.
+*  <b>`config`</b>: (Options.) A `tf.ConfigProto` that specifies default
+    configuration options for all sessions that run on this server.
 *  <b>`start`</b>: (Optional.) Boolean, indicating whether to start the server
     after creating it. Defaults to `True`.
 
@@ -1612,7 +1658,7 @@ override any information provided in `server_or_cluster_def`.
 
 - - -
 
-#### `tf.train.Server.create_local_server(start=True)` {#Server.create_local_server}
+#### `tf.train.Server.create_local_server(config=None, start=True)` {#Server.create_local_server}
 
 Creates a new single-process cluster running on the local host.
 
@@ -1624,6 +1670,8 @@ single-process cluster containing a single task in a job called
 ##### Args:
 
 
+*  <b>`config`</b>: (Options.) A `tf.ConfigProto` that specifies default
+    configuration options for all sessions that run on this server.
 *  <b>`start`</b>: (Optional.) Boolean, indicating whether to start the server after
     creating it. Defaults to `True`.
 
@@ -1651,6 +1699,18 @@ with tf.Session(server.target):
 ##### Returns:
 
   A string containing a session target for this server.
+
+
+- - -
+
+#### `tf.train.Server.server_def` {#Server.server_def}
+
+Returns the `tf.train.ServerDef` for this server.
+
+##### Returns:
+
+  A `tf.train.ServerDef` prototocol buffer that describes the configuration
+  of this server.
 
 
 
@@ -1688,7 +1748,7 @@ This method currently blocks forever.
 A training helper that checkpoints models and computes summaries.
 
 The Supervisor is a small wrapper around a `Coordinator`, a `Saver`,
-and a `SessionManager` that takes care of common needs of Tensorflow
+and a `SessionManager` that takes care of common needs of TensorFlow
 training programs.
 
 #### Use for a single program
@@ -1698,7 +1758,7 @@ with tf.Graph().as_default():
   ...add operations to the graph...
   # Create a Supervisor that will checkpoint the model in '/tmp/mydir'.
   sv = Supervisor(logdir='/tmp/mydir')
-  # Get a Tensorflow session managed by the supervisor.
+  # Get a TensorFlow session managed by the supervisor.
   with sv.managed_session(FLAGS.master) as sess:
     # Use the session to train the graph.
     while not sv.should_stop():
@@ -1840,7 +1900,7 @@ session and check if it could be initialized automatically.
 
 - - -
 
-#### `tf.train.Supervisor.__init__(graph=None, ready_op=0, is_chief=True, init_op=0, init_feed_dict=None, local_init_op=0, logdir=None, summary_op=0, saver=0, global_step=0, save_summaries_secs=120, save_model_secs=600, recovery_wait_secs=30, stop_grace_secs=120, checkpoint_basename='model.ckpt', session_manager=None, summary_writer=0, init_fn=None)` {#Supervisor.__init__}
+#### `tf.train.Supervisor.__init__(graph=None, ready_op=0, ready_for_local_init_op=0, is_chief=True, init_op=0, init_feed_dict=None, local_init_op=0, logdir=None, summary_op=0, saver=0, global_step=0, save_summaries_secs=120, save_model_secs=600, recovery_wait_secs=30, stop_grace_secs=120, checkpoint_basename='model.ckpt', session_manager=None, summary_writer=0, init_fn=None)` {#Supervisor.__init__}
 
 Create a `Supervisor`.
 
@@ -1856,6 +1916,13 @@ Create a `Supervisor`.
     The model is considered ready if it returns an empty array.  Defaults to
     the tensor returned from `tf.report_uninitialized_variables()`  If
     `None`, the model is not checked for readiness.
+*  <b>`ready_for_local_init_op`</b>: 1-D string `Tensor`.  This tensor is evaluated by
+    supervisors in `prepare_or_wait_for_session()` to check if the model is
+    ready to run the local_init_op.
+    The model is considered ready if it returns an empty array.  Defaults to
+    the tensor returned from
+    `tf.report_uninitialized_variables(tf.all_variables())`. If `None`, the
+    model is not checked for readiness before running local_init_op.
 *  <b>`is_chief`</b>: If True, create a chief supervisor in charge of initializing
     and restoring the model.  If False, create a supervisor that relies
     on a chief supervisor for inits and restore.
@@ -2444,6 +2511,13 @@ so it does not need to be passed to the `stop()` method.
 
 - - -
 
+#### `tf.train.Supervisor.ready_for_local_init_op` {#Supervisor.ready_for_local_init_op}
+
+
+
+
+- - -
+
 #### `tf.train.Supervisor.ready_op` {#Supervisor.ready_op}
 
 Return the Ready Op used by the supervisor.
@@ -2577,7 +2651,7 @@ with tf.Graph().as_default():
 `wait_for_session()` waits for a model to be initialized by other processes.
 - - -
 
-#### `tf.train.SessionManager.__init__(local_init_op=None, ready_op=None, graph=None, recovery_wait_secs=30)` {#SessionManager.__init__}
+#### `tf.train.SessionManager.__init__(local_init_op=None, ready_op=None, ready_for_local_init_op=None, graph=None, recovery_wait_secs=30)` {#SessionManager.__init__}
 
 Creates a SessionManager.
 
@@ -2588,6 +2662,12 @@ The `ready_op` is an `Operation` used to check if the model is ready.  The
 model is considered ready if that operation returns an empty string tensor.
 If the operation returns non empty string tensor, the elements are
 concatenated and used to indicate to the user why the model is not ready.
+
+The `ready_for_local_init_op` is an `Operation` used to check if the model
+is ready to run local_init_op.  The model is considered ready if that
+operation returns an empty string tensor. If the operation returns non empty
+string tensor, the elements are concatenated and used to indicate to the
+user why the model is not ready.
 
 If `ready_op` is `None`, the model is not checked for readiness.
 
@@ -2601,8 +2681,16 @@ be initialized or restored.  Defaults to 30 seconds.
 *  <b>`local_init_op`</b>: An `Operation` run immediately after session creation.
      Usually used to initialize tables and local variables.
 *  <b>`ready_op`</b>: An `Operation` to check if the model is initialized.
+*  <b>`ready_for_local_init_op`</b>: An `Operation` to check if the model is ready
+     to run local_init_op.
 *  <b>`graph`</b>: The `Graph` that the model will use.
 *  <b>`recovery_wait_secs`</b>: Seconds between checks for the model to be ready.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If ready_for_local_init_op is not None but local_init_op is
+    None
 
 
 - - -
@@ -2620,21 +2708,12 @@ up to `max_wait_secs`, for recovery to succeed.
 
 If the model cannot be recovered successfully then it is initialized by
 either running the provided `init_op`, or calling the provided `init_fn`.
-It is an error if the model cannot be recovered and neither an `init_op`
-or an `init_fn` are passed.
+The local_init_op is also run after init_op and init_fn, regardless of
+whether the model was recovered successfully, but only if
+ready_for_local_init_op passes.
 
-This is a convenient function for the following, with a few error checks
-added:
-
-```python
-sess, initialized = self.recover_session(master)
-if not initialized:
-  if init_op:
-    sess.run(init_op, feed_dict=init_feed_dict)
-  if init_fn;
-    init_fn(sess)
-return sess
-```
+It is an error if the model cannot be recovered and no `init_op`
+or `init_fn` or `local_init_op` are passed.
 
 ##### Args:
 
@@ -2685,7 +2764,7 @@ and can be recovered from a checkpoint, recover it.
 ##### Returns:
 
   A pair (sess, initialized) where 'initialized' is `True` if
-  the session could be recovered, `False` otherwise.
+  the session could be recovered and initialized, `False` otherwise.
 
 
 - - -
@@ -3615,6 +3694,13 @@ Called when the thread starts.
 #### `tf.train.LooperThread.stop_loop()` {#LooperThread.stop_loop}
 
 Called when the thread stops.
+
+
+
+- - -
+
+### `tf.train.do_quantize_training_on_graphdef(input_graph, num_bits)` {#do_quantize_training_on_graphdef}
+
 
 
 

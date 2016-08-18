@@ -91,6 +91,15 @@ class ShapeOpsTest(tf.test.TestCase):
     self.assertAllEqual(np_ans, result)
     self.assertShapeEqual(np_ans, tf_ans)
 
+  def _compareSizeSparse(self, x_np, use_gpu=False):
+    np_ans = np.asarray(np.size(x_np))
+    x_tf, unused_nnz = _sparsify(x_np)
+    with self.test_session(use_gpu=use_gpu):
+      tf_ans = tf.size(x_tf)
+      result = tf_ans.eval()
+    self.assertAllEqual(np_ans, result)
+    self.assertShapeEqual(np_ans, tf_ans)
+
   def _testCpu(self, x):
     self._compareShape(x, use_gpu=False)
     self._compareShapeN(x, use_gpu=False)
@@ -98,6 +107,7 @@ class ShapeOpsTest(tf.test.TestCase):
     self._compareSize(x, use_gpu=False)
     self._compareShapeSparse(x, use_gpu=False)
     self._compareRankSparse(x, use_gpu=False)
+    self._compareSizeSparse(x, use_gpu=False)
 
   def _testGpu(self, x):
     self._compareShape(x, use_gpu=True)
@@ -106,6 +116,7 @@ class ShapeOpsTest(tf.test.TestCase):
     self._compareSize(x, use_gpu=True)
     self._compareShapeSparse(x, use_gpu=True)
     self._compareRankSparse(x, use_gpu=True)
+    self._compareSizeSparse(x, use_gpu=True)
 
   def _testAll(self, x):
     self._testCpu(x)
@@ -474,6 +485,16 @@ class TileTest(tf.test.TestCase):
     inp = tf.placeholder(tf.float32)
     tiled = tf.tile(inp, tf.placeholder(tf.int32))
     self.assertIs(None, tiled.get_shape().ndims)
+
+    # Known input and partially known multiples.
+    inp = tf.constant(0.0, shape=[1, 1])
+    tiled = tf.tile(inp, [tf.placeholder(tf.int32), 7])
+    self.assertEqual([None, 7], tiled.get_shape().as_list())
+
+    # Mismatched input rank and multiples length.
+    inp = tf.placeholder(tf.float32, shape=[None, None])
+    with self.assertRaises(ValueError):
+      tiled = tf.tile(inp, tf.placeholder(tf.int32, shape=[3]))
 
 
 if __name__ == "__main__":

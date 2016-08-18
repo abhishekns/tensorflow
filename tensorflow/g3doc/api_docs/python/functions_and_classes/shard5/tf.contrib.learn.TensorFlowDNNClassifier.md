@@ -31,42 +31,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowDNNClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowDNNClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -86,7 +58,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -160,12 +133,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.

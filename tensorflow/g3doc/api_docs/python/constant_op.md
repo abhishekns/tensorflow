@@ -40,7 +40,7 @@ tf.zeros([3, 4], int32) ==> [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 
 - - -
 
-### `tf.zeros_like(tensor, dtype=None, name=None)` {#zeros_like}
+### `tf.zeros_like(tensor, dtype=None, name=None, optimize=True)` {#zeros_like}
 
 Creates a tensor with all elements set to zero.
 
@@ -63,6 +63,8 @@ tf.zeros_like(tensor) ==> [[0, 0, 0], [0, 0, 0]]
   `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`, or `complex128`.
 
 *  <b>`name`</b>: A name for the operation (optional).
+*  <b>`optimize`</b>: if true, attempt to statically determine the shape of 'tensor'
+  and encode it as a constant.
 
 ##### Returns:
 
@@ -99,7 +101,7 @@ tf.ones([2, 3], int32) ==> [[1, 1, 1], [1, 1, 1]]
 
 - - -
 
-### `tf.ones_like(tensor, dtype=None, name=None)` {#ones_like}
+### `tf.ones_like(tensor, dtype=None, name=None, optimize=True)` {#ones_like}
 
 Creates a tensor with all elements set to 1.
 
@@ -122,6 +124,8 @@ tf.ones_like(tensor) ==> [[1, 1, 1], [1, 1, 1]]
   `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`, or `complex128`.
 
 *  <b>`name`</b>: A name for the operation (optional).
+*  <b>`optimize`</b>: if true, attempt to statically determine the shape of 'tensor'
+  and encode it as a constant.
 
 ##### Returns:
 
@@ -512,11 +516,11 @@ Draws samples from a multinomial distribution.
 
 Example:
 
-  samples = tf.multinomial(tf.log([[0.5, 0.5]]), 10)
-  # samples has shape [1, 10], where each value is either 0 or 1.
-
-  samples = tf.multinomial([[1, -1, -1]], 10)
-  # samples is equivalent to tf.zeros([1, 10], dtype=tf.int64).
+```python
+# samples has shape [1, 5], where each value is either 0 or 1 with equal
+# probability.
+samples = tf.multinomial(tf.log([[10., 10.]]), 5)
+```
 
 ##### Args:
 

@@ -1,4 +1,3 @@
-# pylint: disable=g-bad-file-header
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,14 +40,17 @@ class BaseTest(tf.test.TestCase):
     random.seed(42)
     x = np.random.rand(1000)
     y = 2 * x + 3
-    regressor = learn.TensorFlowLinearRegressor()
+    feature_columns = learn.infer_real_valued_columns_from_input(x)
+    regressor = learn.TensorFlowLinearRegressor(feature_columns=feature_columns)
     regressor.fit(x, y)
     score = mean_squared_error(y, regressor.predict(x))
     self.assertLess(score, 1.0, "Failed with score = {0}".format(score))
 
   def testIris(self):
     iris = datasets.load_iris()
-    classifier = learn.TensorFlowLinearClassifier(n_classes=3)
+    classifier = learn.TensorFlowLinearClassifier(
+        feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+        n_classes=3)
     classifier.fit(iris.data, [x for x in iris.target])
     score = accuracy_score(iris.target, classifier.predict(iris.data))
     self.assertGreater(score, 0.7, "Failed with score = {0}".format(score))
@@ -58,6 +60,7 @@ class BaseTest(tf.test.TestCase):
     # Note, class_weight are not supported anymore :( Use weight_column.
     with self.assertRaises(ValueError):
       classifier = learn.TensorFlowLinearClassifier(
+          feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
           n_classes=3, class_weight=[0.1, 0.8, 0.1])
       classifier.fit(iris.data, iris.target)
       score = accuracy_score(iris.target, classifier.predict(iris.data))
@@ -65,16 +68,20 @@ class BaseTest(tf.test.TestCase):
 
   def testIrisAllVariables(self):
     iris = datasets.load_iris()
-    classifier = learn.TensorFlowLinearClassifier(n_classes=3)
+    classifier = learn.TensorFlowLinearClassifier(
+        feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+        n_classes=3)
     classifier.fit(iris.data, [x for x in iris.target])
     self.assertEqual(
         classifier.get_variable_names(),
         ["centered_bias_weight",
          "centered_bias_weight/Adagrad",
          "global_step",
-         "linear/_weight",
-         "linear/_weight/Ftrl",
-         "linear/_weight/Ftrl_1",
+         # Double slashes appear because the column name is empty. If it was not
+         # empty, the variable names would be "linear/column_name/_weight" etc.
+         "linear//_weight",
+         "linear//_weight/Ftrl",
+         "linear//_weight/Ftrl_1",
          "linear/bias_weight",
          "linear/bias_weight/Ftrl",
          "linear/bias_weight/Ftrl_1"])
@@ -82,8 +89,9 @@ class BaseTest(tf.test.TestCase):
   def testIrisSummaries(self):
     iris = datasets.load_iris()
     output_dir = tempfile.mkdtemp() + "learn_tests/"
-    classifier = learn.TensorFlowLinearClassifier(n_classes=3,
-                                                  model_dir=output_dir)
+    classifier = learn.TensorFlowLinearClassifier(
+        feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+        n_classes=3, model_dir=output_dir)
     classifier.fit(iris.data, iris.target)
     score = accuracy_score(iris.target, classifier.predict(iris.data))
     self.assertGreater(score, 0.5, "Failed with score = {0}".format(score))
@@ -91,10 +99,12 @@ class BaseTest(tf.test.TestCase):
 
   def testIrisContinueTraining(self):
     iris = datasets.load_iris()
-    classifier = learn.TensorFlowLinearClassifier(n_classes=3,
-                                                  learning_rate=0.01,
-                                                  continue_training=True,
-                                                  steps=250)
+    classifier = learn.TensorFlowLinearClassifier(
+        feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+        n_classes=3,
+        learning_rate=0.01,
+        continue_training=True,
+        steps=250)
     classifier.fit(iris.data, iris.target)
     score1 = accuracy_score(iris.target, classifier.predict(iris.data))
     classifier.fit(iris.data, iris.target, steps=500)
@@ -120,7 +130,9 @@ class BaseTest(tf.test.TestCase):
         for y in iris.target:
           yield y
 
-    classifier = learn.TensorFlowLinearClassifier(n_classes=3, steps=100)
+    classifier = learn.TensorFlowLinearClassifier(
+        feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+        n_classes=3, steps=100)
     classifier.fit(iris_data(), iris_target())
     score1 = accuracy_score(iris.target, classifier.predict(iris.data))
     score2 = accuracy_score(iris.target,
@@ -135,7 +147,9 @@ class BaseTest(tf.test.TestCase):
     if log_loss:
       random.seed(42)
       iris = datasets.load_iris()
-      classifier = learn.TensorFlowClassifier(n_classes=3, steps=250)
+      classifier = learn.TensorFlowClassifier(
+          feature_columns=learn.infer_real_valued_columns_from_input(iris.data),
+          n_classes=3, steps=250)
       classifier.fit(iris.data, iris.target)
       score = log_loss(iris.target, classifier.predict_proba(iris.data))
       self.assertLess(score, 0.8, "Failed with score = {0}".format(score))
@@ -143,9 +157,11 @@ class BaseTest(tf.test.TestCase):
   def testBoston(self):
     random.seed(42)
     boston = datasets.load_boston()
-    regressor = learn.TensorFlowLinearRegressor(batch_size=boston.data.shape[0],
-                                                steps=500,
-                                                learning_rate=0.001)
+    regressor = learn.TensorFlowLinearRegressor(
+        feature_columns=learn.infer_real_valued_columns_from_input(boston.data),
+        batch_size=boston.data.shape[0],
+        steps=500,
+        learning_rate=0.001)
     regressor.fit(boston.data, boston.target)
     score = mean_squared_error(boston.target, regressor.predict(boston.data))
     self.assertLess(score, 150, "Failed with score = {0}".format(score))

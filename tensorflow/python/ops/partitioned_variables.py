@@ -30,7 +30,7 @@ A key design goal is to allow a different graph to repartition a variable
 with the same name but different slicings, including possibly no partitions.
 
 TODO(touts): If an initializer provides a seed, the seed must be changed
-deterministicaly for each slice, maybe by adding one to it, otherwise each
+deterministically for each slice, maybe by adding one to it, otherwise each
 slice will use the same values.  Maybe this can be done by passing the
 slice offsets to the initializer functions.
 
@@ -61,7 +61,11 @@ from tensorflow.python.framework import tensor_shape
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.platform import tf_logging as logging
 
-__all__ = ["create_partitioned_variables", "variable_axis_size_partitioner"]
+__all__ = [
+    "create_partitioned_variables",
+    "variable_axis_size_partitioner",
+    "min_max_variable_partitioner",
+]
 
 
 def variable_axis_size_partitioner(
@@ -148,6 +152,69 @@ def variable_axis_size_partitioner(
   return _partitioner
 
 
+def min_max_variable_partitioner(max_partitions=1, axis=0,
+                                 min_slice_size=256 << 10,
+                                 bytes_per_string_element=16):
+  """Partitioner to allocate minimum size per slice.
+
+  Returns a partitioner that partitions the variable of given shape and dtype
+  such that each partition has a minimum of `min_slice_size` slice of the
+  variable. The maximum number of such partitions (upper bound) is given by
+  `max_partitions`.
+
+  Args:
+    max_partitions: Upper bound on the number of partitions. Defaults to 1.
+    axis: Axis along which to partition the variable. Defaults to 0.
+    min_slice_size: Minimum size of the variable slice per partition. Defaults
+      to 256K.
+    bytes_per_string_element: If the `Variable` is of type string, this provides
+      an estimate of how large each scalar in the `Variable` is.
+
+  Returns:
+    A partition function usable as the `partitioner` argument to
+    `variable_scope`, `get_variable`, and `get_partitioned_variable_list`.
+
+  """
+  def _partitioner(shape, dtype):
+    """Partitioner that partitions list for a variable of given shape and type.
+
+    Ex: Consider partitioning a variable of type float32 with
+      shape=[1024, 1024].
+      If `max_partitions` >= 16, this function would return
+        [(1024 * 1024 * 4) / (256 * 1024), 1] = [16, 1].
+      If `max_partitions` < 16, this function would return
+        [`max_partitions`, 1].
+
+    Args:
+      shape: Shape of the variable.
+      dtype: Type of the variable.
+
+    Returns:
+      List of partitions for each axis (currently only one axis can be
+      partitioned).
+
+    Raises:
+      ValueError: If axis to partition along does not exist for the variable.
+    """
+    if axis >= len(shape):
+      raise ValueError("Can not partition variable along axis %d when shape is "
+                       "only %s" % (axis, shape))
+    if dtype.base_dtype == dtypes.string:
+      bytes_per_element = bytes_per_string_element
+    else:
+      bytes_per_element = dtype.size
+    total_size_bytes = shape.num_elements() * bytes_per_element
+    partitions = total_size_bytes / min_slice_size
+    partitions_list = [1] * len(shape)
+    # We can not partition the variable beyond what its shape or
+    # `max_partitions` allows.
+    partitions_list[axis] = max(1, min(shape[axis].value,
+                                       max_partitions,
+                                       int(math.ceil(partitions))))
+    return partitions_list
+  return _partitioner
+
+
 def create_partitioned_variables(
     shape, slicing, initializer, dtype=dtypes.float32,
     trainable=True, collections=None, name=None, reuse=None):
@@ -209,8 +276,8 @@ def create_partitioned_variables(
   # the partitioner.
   partitioner = lambda **unused_kwargs: slicing
 
-  with variable_scope.variable_op_scope(
-      [], name, "PartitionedVariable", reuse=reuse):
+  with variable_scope.variable_scope(
+      name, "PartitionedVariable", reuse=reuse):
     # pylint: disable=protected-access
     partitioned_var = variable_scope._get_partitioned_variable(
         name=None,

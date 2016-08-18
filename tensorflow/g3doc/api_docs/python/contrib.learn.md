@@ -15,102 +15,53 @@ Train and evaluate TensorFlow models.
 
 Abstract BaseEstimator class to train and evaluate TensorFlow models.
 
-Concrete implementation of this class should provide following functions:
+Concrete implementation of this class should provide the following functions:
+
   * _get_train_ops
   * _get_eval_ops
   * _get_predict_ops
 
 `Estimator` implemented below is a good example of how to use this class.
-
-Parameters:
-  model_dir: Directory to save model parameters, graph and etc.
 - - -
 
 #### `tf.contrib.learn.BaseEstimator.__init__(model_dir=None, config=None)` {#BaseEstimator.__init__}
 
+Initializes a BaseEstimator instance.
 
+##### Args:
+
+
+*  <b>`model_dir`</b>: Directory to save model parameters, graph and etc. This can
+    also be used to load checkpoints from the directory into a estimator to
+    continue training a previously saved model.
+*  <b>`config`</b>: A RunConfig instance.
 
 
 - - -
 
 #### `tf.contrib.learn.BaseEstimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#BaseEstimator.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.BaseEstimator.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#BaseEstimator.fit}
+#### `tf.contrib.learn.BaseEstimator.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#BaseEstimator.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -123,7 +74,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -183,12 +135,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -211,27 +163,38 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.BaseEstimator.predict(x=None, input_fn=None, batch_size=None, outputs=None)` {#BaseEstimator.predict}
+#### `tf.contrib.learn.BaseEstimator.predict(*args, **kwargs)` {#BaseEstimator.predict}
 
-Returns predictions for given features.
+Returns predictions for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: Matrix of shape [n_samples, n_features...]. Can be iterator that
+         returns arrays of features. The training input samples for fitting the
+         model. If set, `input_fn` must be `None`.
+      input_fn: Input function. If set, `x` and 'batch_size' must be `None`.
+      batch_size: Override default batch size. If set, 'input_fn' must be
+        'None'.
+      outputs: list of `str`, name of the output to predict.
+        If `None`, returns all.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: Features. If set, `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x` must be `None`.
-*  <b>`batch_size`</b>: Override default batch size.
-*  <b>`outputs`</b>: list of `str`, name of the output to predict.
-           If `None`, returns all.
+    Returns:
+      A numpy array of predicted classes or regression values if the
+      constructor's `model_fn` returns a `Tensor` for `predictions` or a `dict`
+      of numpy arrays if `model_fn` returns a `dict`. Returns an iterable of
+      predictions if as_iterable is True.
 
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If x and input_fn are both provided or both `None`.
+    Raises:
+      ValueError: If x and input_fn are both provided or both `None`.
 
 
 - - -
@@ -266,116 +229,77 @@ component of a nested object.
 ### `class tf.contrib.learn.Estimator` {#Estimator}
 
 Estimator class is the basic TensorFlow model trainer/evaluator.
-
-Parameters:
-  model_fn: Model function, takes features and targets tensors or dicts of
-            tensors and returns predictions and loss tensors.
-            Supports next three signatures for the function:
-              * `(features, targets) -> (predictions, loss, train_op)`
-              * `(features, targets, mode) -> (predictions, loss, train_op)`
-              * `(features, targets, mode, params) ->
-                  (predictions, loss, train_op)`
-            Where:
-              * `features` are single `Tensor` or `dict` of `Tensor`s
-                   (depending on data passed to `fit`),
-              * `targets` are `Tensor` or
-                  `dict` of `Tensor`s (for multi-head model).
-              * `mode` represents if this training, evaluation or prediction.
-                  See `ModeKeys` for example keys.
-              * `params` is a `dict` of hyperparameters. Will receive what is
-                  passed to Estimator in `params` parameter. This allows to
-                  configure Estimators from hyper parameter tunning.
-  model_dir: Directory to save model parameters, graph and etc.
-  config: Configuration object.
-  params: `dict` of hyper parameters that will be passed into `model_fn`.
-          Keys are names of parameters, values are basic python types.
 - - -
 
 #### `tf.contrib.learn.Estimator.__init__(model_fn=None, model_dir=None, config=None, params=None)` {#Estimator.__init__}
 
+Constructs an Estimator instance.
 
+##### Args:
+
+
+*  <b>`model_fn`</b>: Model function, takes features and targets tensors or dicts of
+            tensors and returns predictions and loss tensors.
+            Supports next three signatures for the function:
+
+      * `(features, targets) -> (predictions, loss, train_op)`
+      * `(features, targets, mode) -> (predictions, loss, train_op)`
+      * `(features, targets, mode, params) -> (predictions, loss, train_op)`
+
+  Where
+
+      * `features` are single `Tensor` or `dict` of `Tensor`s
+             (depending on data passed to `fit`),
+      * `targets` are `Tensor` or `dict` of `Tensor`s (for multi-head
+             models). If mode is `ModeKeys.INFER`, `targets=None` will be
+             passed. If the `model_fn`'s signature does not accept
+             `mode`, the `model_fn` must still be able to handle
+             `targets=None`.
+      * `mode` represents if this training, evaluation or
+             prediction. See `ModeKeys`.
+      * `params` is a `dict` of hyperparameters. Will receive what
+             is passed to Estimator in `params` parameter. This allows
+             to configure Estimators from hyper parameter tunning.
+
+
+*  <b>`model_dir`</b>: Directory to save model parameters, graph and etc. This can
+    also be used to load checkpoints from the directory into a estimator to
+    continue training a previously saved model.
+*  <b>`config`</b>: Configuration object.
+*  <b>`params`</b>: `dict` of hyper parameters that will be passed into `model_fn`.
+          Keys are names of parameters, values are basic python types.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: parameters of `model_fn` don't match `params`.
 
 
 - - -
 
 #### `tf.contrib.learn.Estimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#Estimator.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.Estimator.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#Estimator.fit}
+#### `tf.contrib.learn.Estimator.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#Estimator.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -388,7 +312,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -448,12 +373,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -476,27 +401,38 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.Estimator.predict(x=None, input_fn=None, batch_size=None, outputs=None)` {#Estimator.predict}
+#### `tf.contrib.learn.Estimator.predict(*args, **kwargs)` {#Estimator.predict}
 
-Returns predictions for given features.
+Returns predictions for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: Matrix of shape [n_samples, n_features...]. Can be iterator that
+         returns arrays of features. The training input samples for fitting the
+         model. If set, `input_fn` must be `None`.
+      input_fn: Input function. If set, `x` and 'batch_size' must be `None`.
+      batch_size: Override default batch size. If set, 'input_fn' must be
+        'None'.
+      outputs: list of `str`, name of the output to predict.
+        If `None`, returns all.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: Features. If set, `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x` must be `None`.
-*  <b>`batch_size`</b>: Override default batch size.
-*  <b>`outputs`</b>: list of `str`, name of the output to predict.
-           If `None`, returns all.
+    Returns:
+      A numpy array of predicted classes or regression values if the
+      constructor's `model_fn` returns a `Tensor` for `predictions` or a `dict`
+      of numpy arrays if `model_fn` returns a `dict`. Returns an iterable of
+      predictions if as_iterable is True.
 
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If x and input_fn are both provided or both `None`.
+    Raises:
+      ValueError: If x and input_fn are both provided or both `None`.
 
 
 - - -
@@ -575,42 +511,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -630,7 +538,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -704,12 +613,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -796,70 +705,99 @@ component of a nested object.
 
 A classifier for TensorFlow DNN models.
 
-  Example:
-    ```
-    installed_app_id = sparse_column_with_hash_bucket("installed_id", 1e6)
-    impression_app_id = sparse_column_with_hash_bucket("impression_id", 1e6)
+Example:
 
-    installed_emb = embedding_column(installed_app_id, dimension=16,
-                                     combiner="sum")
-    impression_emb = embedding_column(impression_app_id, dimension=16,
-                                      combiner="sum")
+```python
+education = sparse_column_with_hash_bucket(column_name="education",
+                                           hash_bucket_size=1000)
+occupation = sparse_column_with_hash_bucket(column_name="occupation",
+                                            hash_bucket_size=1000)
 
-    estimator = DNNClassifier(
-        feature_columns=[installed_emb, impression_emb],
-        hidden_units=[1024, 512, 256])
+education_emb = embedding_column(sparse_id_column=education, dimension=16,
+                                 combiner="sum")
+occupation_emb = embedding_column(sparse_id_column=occupation, dimension=16,
+                                 combiner="sum")
 
-    # Input builders
-    def input_fn_train: # returns x, Y
-      pass
-    estimator.fit(input_fn=input_fn_train)
+estimator = DNNClassifier(
+    feature_columns=[education_emb, occupation_emb],
+    hidden_units=[1024, 512, 256])
 
-    def input_fn_eval: # returns x, Y
-      pass
-    estimator.evaluate(input_fn=input_fn_eval)
-    estimator.predict(x=x)
-    ```
+# Or estimator using the ProximalAdagradOptimizer optimizer with
+# regularization.
+estimator = DNNClassifier(
+    feature_columns=[education_emb, occupation_emb],
+    hidden_units=[1024, 512, 256],
+    optimizer=tf.train.ProximalAdagradOptimizer(
+      learning_rate=0.1,
+      l1_regularization_strength=0.001
+    ))
 
-  Input of `fit` and `evaluate` should have following features,
-    otherwise there will be a `KeyError`:
-      if `weight_column_name` is not `None`, a feature with
-        `key=weight_column_name` whose value is a `Tensor`.
-      for each `column` in `feature_columns`:
-      - if `column` is a `SparseColumn`, a feature with `key=column.name`
-        whose `value` is a `SparseTensor`.
-      - if `column` is a `RealValuedColumn, a feature with `key=column.name`
-        whose `value` is a `Tensor`.
-      - if `feauture_columns` is None, then `input` must contains only real
-        valued `Tensor`.
+# Input builders
+def input_fn_train: # returns x, Y
+  pass
+estimator.fit(input_fn=input_fn_train)
 
-Parameters:
-  hidden_units: List of hidden units per layer. All layers are fully
-    connected. Ex. [64, 32] means first layer has 64 nodes and second one has
-    32.
-  feature_columns: An iterable containing all the feature columns used by the
-    model. All items in the set should be instances of classes derived from
-    `FeatureColumn`.
-  model_dir: Directory to save model parameters, graph and etc.
-  n_classes: number of target classes. Default is binary classification.
-    It must be greater than 1.
-  weight_column_name: A string defining feature column name representing
-    weights. It is used to down weight or boost examples during training. It
-    will be multiplied by the loss of the example.
-  optimizer: An instance of `tf.Optimizer` used to train the model. If `None`,
-    will use an Adagrad optimizer.
-  activation_fn: Activation function applied to each layer. If `None`, will
-    use `tf.nn.relu`.
-  dropout: When not None, the probability we will drop out a given coordinate.
-  gradient_clip_norm: A float > 0. If provided, gradients are clipped
-    to their global norm with this clipping ratio. See tf.clip_by_global_norm
-    for more details.
-  config: RunConfig object to configure the runtime settings.
+def input_fn_eval: # returns x, Y
+  pass
+estimator.evaluate(input_fn=input_fn_eval)
+estimator.predict(x=x)
+```
+
+Input of `fit` and `evaluate` should have following features,
+  otherwise there will be a `KeyError`:
+
+* if `weight_column_name` is not `None`, a feature with
+   `key=weight_column_name` whose value is a `Tensor`.
+* for each `column` in `feature_columns`:
+  - if `column` is a `SparseColumn`, a feature with `key=column.name`
+    whose `value` is a `SparseTensor`.
+  - if `column` is a `WeightedSparseColumn`, two features: the first with
+    `key` the id column name, the second with `key` the weight column name.
+    Both features' `value` must be a `SparseTensor`.
+  - if `column` is a `RealValuedColumn`, a feature with `key=column.name`
+    whose `value` is a `Tensor`.
+  - if `feature_columns` is `None`, then `input` must contain only real
+    valued `Tensor`.
 - - -
 
-#### `tf.contrib.learn.DNNClassifier.__init__(hidden_units, feature_columns=None, model_dir=None, n_classes=2, weight_column_name=None, optimizer=None, activation_fn=relu, dropout=None, gradient_clip_norm=None, config=None)` {#DNNClassifier.__init__}
+#### `tf.contrib.learn.DNNClassifier.__init__(hidden_units, feature_columns, model_dir=None, n_classes=2, weight_column_name=None, optimizer=None, activation_fn=relu, dropout=None, gradient_clip_norm=None, enable_centered_bias=True, config=None)` {#DNNClassifier.__init__}
+
+Initializes a DNNClassifier instance.
+
+##### Args:
 
 
+*  <b>`hidden_units`</b>: List of hidden units per layer. All layers are fully
+    connected. Ex. `[64, 32]` means first layer has 64 nodes and second one
+    has 32.
+*  <b>`feature_columns`</b>: An iterable containing all the feature columns used by
+    the model. All items in the set should be instances of classes derived
+    from `FeatureColumn`.
+*  <b>`model_dir`</b>: Directory to save model parameters, graph and etc. This can also
+    be used to load checkpoints from the directory into a estimator to continue
+    training a previously saved model.
+*  <b>`n_classes`</b>: number of target classes. Default is binary classification.
+    It must be greater than 1.
+*  <b>`weight_column_name`</b>: A string defining feature column name representing
+    weights. It is used to down weight or boost examples during training. It
+    will be multiplied by the loss of the example.
+*  <b>`optimizer`</b>: An instance of `tf.Optimizer` used to train the model. If
+    `None`, will use an Adagrad optimizer.
+*  <b>`activation_fn`</b>: Activation function applied to each layer. If `None`, will
+    use `tf.nn.relu`.
+*  <b>`dropout`</b>: When not `None`, the probability we will drop out a given
+    coordinate.
+*  <b>`gradient_clip_norm`</b>: A float > 0. If provided, gradients are
+    clipped to their global norm with this clipping ratio. See
+    tf.clip_by_global_norm for more details.
+*  <b>`enable_centered_bias`</b>: A bool. If True, estimator will learn a centered
+    bias variable for each class. Rest of the model structure learns the
+    residual after centered bias.
+*  <b>`config`</b>: `RunConfig` object to configure the runtime settings.
+
+##### Returns:
+
+  A `DNNClassifier` estimator.
 
 
 - - -
@@ -887,82 +825,27 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.DNNClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#DNNClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.DNNClassifier.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#DNNClassifier.fit}
+#### `tf.contrib.learn.DNNClassifier.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#DNNClassifier.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -975,7 +858,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -1049,12 +933,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -1077,38 +961,54 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.DNNClassifier.predict(x=None, input_fn=None, batch_size=None)` {#DNNClassifier.predict}
+#### `tf.contrib.learn.DNNClassifier.predict(*args, **kwargs)` {#DNNClassifier.predict}
 
-Returns predictions for given features.
+Returns predicted classes for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: features.
+      input_fn: Input function. If set, x must be None.
+      batch_size: Override default batch size.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x must be None.
-*  <b>`batch_size`</b>: Override default batch size.
-
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
+    Returns:
+      Numpy array of predicted classes (or an iterable of predicted classes if
+      as_iterable is True).
 
 
 - - -
 
-#### `tf.contrib.learn.DNNClassifier.predict_proba(x=None, input_fn=None, batch_size=None)` {#DNNClassifier.predict_proba}
+#### `tf.contrib.learn.DNNClassifier.predict_proba(*args, **kwargs)` {#DNNClassifier.predict_proba}
 
-Returns prediction probabilities for given features.
+Returns prediction probabilities for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: features.
+      input_fn: Input function. If set, x and y must be None.
+      batch_size: Override default batch size.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x and y must be None.
-*  <b>`batch_size`</b>: Override default batch size.
-
-##### Returns:
-
-  Numpy array of predicted probabilities.
+    Returns:
+      Numpy array of predicted probabilities (or an iterable of predicted
+      probabilities if as_iterable is True).
 
 
 - - -
@@ -1151,70 +1051,97 @@ component of a nested object.
 
 A regressor for TensorFlow DNN models.
 
-  Example:
-    ```
-    installed_app_id = sparse_column_with_hash_bucket("installed_id", 1e6)
-    impression_app_id = sparse_column_with_hash_bucket("impression_id", 1e6)
+Example:
 
-    installed_emb = embedding_column(installed_app_id, dimension=16,
-                                     combiner="sum")
-    impression_emb = embedding_column(impression_app_id, dimension=16,
-                                      combiner="sum")
+```python
+education = sparse_column_with_hash_bucket(column_name="education",
+                                           hash_bucket_size=1000)
+occupation = sparse_column_with_hash_bucket(column_name="occupation",
+                                            hash_bucket_size=1000)
 
-    estimator = DNNRegressor(
-        feature_columns=[installed_emb, impression_emb],
-        hidden_units=[1024, 512, 256])
+education_emb = embedding_column(sparse_id_column=education, dimension=16,
+                                 combiner="sum")
+occupation_emb = embedding_column(sparse_id_column=occupation, dimension=16,
+                                 combiner="sum")
 
-    # Input builders
-    def input_fn_train: # returns x, Y
-      pass
-    estimator.fit(input_fn=input_fn_train)
+estimator = DNNRegressor(
+    feature_columns=[education_emb, occupation_emb],
+    hidden_units=[1024, 512, 256])
 
-    def input_fn_eval: # returns x, Y
-      pass
-    estimator.evaluate(input_fn=input_fn_eval)
-    estimator.predict(x=x)
-    ```
+# Or estimator using the ProximalAdagradOptimizer optimizer with
+# regularization.
+estimator = DNNRegressor(
+    feature_columns=[education_emb, occupation_emb],
+    hidden_units=[1024, 512, 256],
+    optimizer=tf.train.ProximalAdagradOptimizer(
+      learning_rate=0.1,
+      l1_regularization_strength=0.001
+    ))
 
-  Input of `fit` and `evaluate` should have following features,
-    otherwise there will be a `KeyError`:
-      if `weight_column_name` is not `None`, a feature with
-        `key=weight_column_name` whose value is a `Tensor`.
-      for each `column` in `feature_columns`:
-      - if `column` is a `SparseColumn`, a feature with `key=column.name`
-        whose `value` is a `SparseTensor`.
-      - if `column` is a `RealValuedColumn, a feature with `key=column.name`
-        whose `value` is a `Tensor`.
-      - if `feauture_columns` is None, then `input` must contains only real
-        valued `Tensor`.
+# Input builders
+def input_fn_train: # returns x, Y
+  pass
+estimator.fit(input_fn=input_fn_train)
 
+def input_fn_eval: # returns x, Y
+  pass
+estimator.evaluate(input_fn=input_fn_eval)
+estimator.predict(x=x)
+```
 
+Input of `fit` and `evaluate` should have following features,
+  otherwise there will be a `KeyError`:
 
-Parameters:
-  hidden_units: List of hidden units per layer. All layers are fully
-    connected. Ex. [64, 32] means first layer has 64 nodes and second one has
-    32.
-  feature_columns: An iterable containing all the feature columns used by the
-    model. All items in the set should be instances of classes derived from
-    `FeatureColumn`.
-  model_dir: Directory to save model parameters, graph and etc.
-  weight_column_name: A string defining feature column name representing
-    weights. It is used to down weight or boost examples during training. It
-    will be multiplied by the loss of the example.
-  optimizer: An instance of `tf.Optimizer` used to train the model. If `None`,
-    will use an Adagrad optimizer.
-  activation_fn: Activation function applied to each layer. If `None`, will
-    use `tf.nn.relu`.
-  dropout: When not None, the probability we will drop out a given coordinate.
-  gradient_clip_norm: A float > 0. If provided, gradients are clipped
-    to their global norm with this clipping ratio. See tf.clip_by_global_norm
-    for more details.
-  config: RunConfig object to configure the runtime settings.
+* if `weight_column_name` is not `None`, a feature with
+  `key=weight_column_name` whose value is a `Tensor`.
+* for each `column` in `feature_columns`:
+  - if `column` is a `SparseColumn`, a feature with `key=column.name`
+    whose `value` is a `SparseTensor`.
+  - if `column` is a `WeightedSparseColumn`, two features: the first with
+    `key` the id column name, the second with `key` the weight column name.
+    Both features' `value` must be a `SparseTensor`.
+  - if `column` is a `RealValuedColumn`, a feature with `key=column.name`
+    whose `value` is a `Tensor`.
+  - if `feature_columns` is `None`, then `input` must contain only real
+    valued `Tensor`.
 - - -
 
-#### `tf.contrib.learn.DNNRegressor.__init__(hidden_units, feature_columns=None, model_dir=None, weight_column_name=None, optimizer=None, activation_fn=relu, dropout=None, gradient_clip_norm=None, config=None)` {#DNNRegressor.__init__}
+#### `tf.contrib.learn.DNNRegressor.__init__(hidden_units, feature_columns, model_dir=None, weight_column_name=None, optimizer=None, activation_fn=relu, dropout=None, gradient_clip_norm=None, enable_centered_bias=True, config=None)` {#DNNRegressor.__init__}
+
+Initializes a `DNNRegressor` instance.
+
+##### Args:
 
 
+*  <b>`hidden_units`</b>: List of hidden units per layer. All layers are fully
+    connected. Ex. `[64, 32]` means first layer has 64 nodes and second one
+    has 32.
+*  <b>`feature_columns`</b>: An iterable containing all the feature columns used by
+    the model. All items in the set should be instances of classes derived
+    from `FeatureColumn`.
+*  <b>`model_dir`</b>: Directory to save model parameters, graph and etc. This can also
+    be used to load checkpoints from the directory into a estimator to continue
+    training a previously saved model.
+*  <b>`weight_column_name`</b>: A string defining feature column name representing
+    weights. It is used to down weight or boost examples during training. It
+    will be multiplied by the loss of the example.
+*  <b>`optimizer`</b>: An instance of `tf.Optimizer` used to train the model. If
+    `None`, will use an Adagrad optimizer.
+*  <b>`activation_fn`</b>: Activation function applied to each layer. If `None`, will
+    use `tf.nn.relu`.
+*  <b>`dropout`</b>: When not `None`, the probability we will drop out a given
+    coordinate.
+*  <b>`gradient_clip_norm`</b>: A `float` > 0. If provided, gradients are clipped
+    to their global norm with this clipping ratio. See
+    `tf.clip_by_global_norm` for more details.
+*  <b>`enable_centered_bias`</b>: A bool. If True, estimator will learn a centered
+    bias variable for each class. Rest of the model structure learns the
+    residual after centered bias.
+*  <b>`config`</b>: `RunConfig` object to configure the runtime settings.
+
+##### Returns:
+
+  A `DNNRegressor` estimator.
 
 
 - - -
@@ -1242,82 +1169,27 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.DNNRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#DNNRegressor.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.DNNRegressor.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#DNNRegressor.fit}
+#### `tf.contrib.learn.DNNRegressor.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#DNNRegressor.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -1330,7 +1202,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -1404,12 +1277,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -1432,20 +1305,38 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.DNNRegressor.predict(x=None, input_fn=None, batch_size=None)` {#DNNRegressor.predict}
+#### `tf.contrib.learn.DNNRegressor.predict(*args, **kwargs)` {#DNNRegressor.predict}
 
-Returns predictions for given features.
+Returns predictions for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: Matrix of shape [n_samples, n_features...]. Can be iterator that
+         returns arrays of features. The training input samples for fitting the
+         model. If set, `input_fn` must be `None`.
+      input_fn: Input function. If set, `x` and 'batch_size' must be `None`.
+      batch_size: Override default batch size. If set, 'input_fn' must be
+        'None'.
+      outputs: list of `str`, name of the output to predict.
+        If `None`, returns all.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x must be None.
-*  <b>`batch_size`</b>: Override default batch size.
+    Returns:
+      A numpy array of predicted classes or regression values if the
+      constructor's `model_fn` returns a `Tensor` for `predictions` or a `dict`
+      of numpy arrays if `model_fn` returns a `dict`. Returns an iterable of
+      predictions if as_iterable is True.
 
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
+    Raises:
+      ValueError: If x and input_fn are both provided or both `None`.
 
 
 - - -
@@ -1519,42 +1410,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowDNNClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowDNNClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -1574,7 +1437,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -1648,12 +1512,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -1771,42 +1635,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowDNNRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowDNNRegressor.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -1826,7 +1662,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -1900,12 +1737,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -1991,48 +1828,74 @@ component of a nested object.
 ### `class tf.contrib.learn.TensorFlowEstimator` {#TensorFlowEstimator}
 
 Base class for all TensorFlow estimators.
-
-Parameters:
-  model_fn: Model function, that takes input `x`, `y` tensors and outputs
-    prediction and loss tensors.
-  n_classes: Number of classes in the target.
-  batch_size: Mini batch size.
-  steps: Number of steps to run over data.
-  optimizer: Optimizer name (or class), for example "SGD", "Adam",
-    "Adagrad".
-  learning_rate: If this is constant float value, no decay function is used.
-    Instead, a customized decay function can be passed that accepts
-    global_step as parameter and returns a Tensor.
-    e.g. exponential decay function:
-    def exp_decay(global_step):
-        return tf.train.exponential_decay(
-            learning_rate=0.1, global_step,
-            decay_steps=2, decay_rate=0.001)
-  clip_gradients: Clip norm of the gradients to this value to stop
-    gradient explosion.
-  class_weight: None or list of n_classes floats. Weight associated with
-    classes for loss computation. If not given, all classes are supposed to
-    have weight one.
-  continue_training: when continue_training is True, once initialized
-    model will be continuely trained on every call of fit.
-  config: RunConfig object that controls the configurations of the
-    session, e.g. num_cores, gpu_memory_fraction, etc.
-  verbose: Controls the verbosity, possible values:
-    0: the algorithm and debug information is muted.
-    1: trainer prints the progress.
-    2: log device placement is printed.
 - - -
 
 #### `tf.contrib.learn.TensorFlowEstimator.__init__(model_fn, n_classes, batch_size=32, steps=200, optimizer='Adagrad', learning_rate=0.1, clip_gradients=5.0, class_weight=None, continue_training=False, config=None, verbose=1)` {#TensorFlowEstimator.__init__}
 
+Initializes a TensorFlowEstimator instance.
 
+##### Args:
+
+
+*  <b>`model_fn`</b>: Model function, that takes input `x`, `y` tensors and outputs
+    prediction and loss tensors.
+*  <b>`n_classes`</b>: Number of classes in the target.
+*  <b>`batch_size`</b>: Mini batch size.
+*  <b>`steps`</b>: Number of steps to run over data.
+*  <b>`optimizer`</b>: Optimizer name (or class), for example "SGD", "Adam",
+    "Adagrad".
+*  <b>`learning_rate`</b>: If this is constant float value, no decay function is used.
+    Instead, a customized decay function can be passed that accepts
+    global_step as parameter and returns a Tensor.
+    e.g. exponential decay function:
+
+    ````python
+    def exp_decay(global_step):
+        return tf.train.exponential_decay(
+            learning_rate=0.1, global_step,
+            decay_steps=2, decay_rate=0.001)
+    ````
+
+
+*  <b>`clip_gradients`</b>: Clip norm of the gradients to this value to stop
+    gradient explosion.
+*  <b>`class_weight`</b>: None or list of n_classes floats. Weight associated with
+    classes for loss computation. If not given, all classes are supposed to
+    have weight one.
+*  <b>`continue_training`</b>: when continue_training is True, once initialized
+    model will be continuely trained on every call of fit.
+*  <b>`config`</b>: RunConfig object that controls the configurations of the
+    session, e.g. num_cores, gpu_memory_fraction, etc.
+*  <b>`verbose`</b>: Controls the verbosity, possible values:
+
+    * 0: the algorithm and debug information is muted.
+    * 1: trainer prints the progress.
+    * 2: log device placement is printed.
 
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowEstimator.evaluate(x=None, y=None, input_fn=None, steps=None)` {#TensorFlowEstimator.evaluate}
+#### `tf.contrib.learn.TensorFlowEstimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowEstimator.evaluate}
 
-See base class.
+Evaluates given model with provided evaluation data.
+
+See superclass Estimator for more details.
+
+##### Args:
+
+
+*  <b>`x`</b>: features.
+*  <b>`y`</b>: targets.
+*  <b>`input_fn`</b>: Input function.
+*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called.
+*  <b>`batch_size`</b>: minibatch size to use on the input.
+*  <b>`steps`</b>: Number of steps for which to evaluate model.
+*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metrics are used.
+*  <b>`name`</b>: Name of the evaluation.
+
+##### Returns:
+
+  Returns `dict` with evaluation results.
 
 
 - - -
@@ -2079,7 +1942,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -2284,77 +2148,98 @@ component of a nested object.
 
 Linear classifier model.
 
-  Example:
-  ```
-  installed_app_id = sparse_column_with_hash_bucket("installed_id", 1e6)
-  impression_app_id = sparse_column_with_hash_bucket("impression_id", 1e6)
+Train a linear model to classify instances into one of multiple possible
+classes. When number of possible classes is 2, this is binary classification.
 
-  installed_x_impression = crossed_column(
-      [installed_app_id, impression_app_id])
+Example:
 
-  # Estimator using the default optimizer.
-  estimator = LinearClassifier(
-      feature_columns=[impression_app_id, installed_x_impression])
+```python
+education = sparse_column_with_hash_bucket(column_name="education",
+                                           hash_bucket_size=1000)
+occupation = sparse_column_with_hash_bucket(column_name="occupation",
+                                            hash_bucket_size=1000)
 
-  # Or estimator using the FTRL optimizer with regularization.
-  estimator = LinearClassifier(
-      feature_columns=[impression_app_id, installed_x_impression],
-      optimizer=tf.train.FtrlOptimizer(
-        learning_rate=0.1,
-        l1_regularization_strength=0.001
-      ))
+education_x_occupation = crossed_column(columns=[education, occupation],
+                                        hash_bucket_size=10000)
 
-  # Or estimator using the SDCAOptimizer.
-  estimator = LinearClassifier(
-     feature_columns=[impression_app_id, installed_x_impression],
-     optimizer=tf.contrib.learn.SDCAOptimizer(
-       example_id_column='example_id', symmetric_l2_regularization=2.0
-     ))
+# Estimator using the default optimizer.
+estimator = LinearClassifier(
+    feature_columns=[occupation, education_x_occupation])
 
-  # Input builders
-  def input_fn_train: # returns x, y
-    ...
-  def input_fn_eval: # returns x, y
-    ...
-  estimator.fit(input_fn=input_fn_train)
-  estimator.evaluate(input_fn=input_fn_eval)
-  estimator.predict(x=x)
-  ```
+# Or estimator using the FTRL optimizer with regularization.
+estimator = LinearClassifier(
+    feature_columns=[occupation, education_x_occupation],
+    optimizer=tf.train.FtrlOptimizer(
+      learning_rate=0.1,
+      l1_regularization_strength=0.001
+    ))
 
-  Input of `fit` and `evaluate` should have following features,
-    otherwise there will be a `KeyError`:
-      if `weight_column_name` is not `None`, a feature with
-        `key=weight_column_name` whose value is a `Tensor`.
-      for each `column` in `feature_columns`:
-      - if `column` is a `SparseColumn`, a feature with `key=column.name`
-        whose `value` is a `SparseTensor`.
-      - if `column` is a `RealValuedColumn, a feature with `key=column.name`
-        whose `value` is a `Tensor`.
-      - if `feauture_columns` is None, then `input` must contains only real
-        valued `Tensor`.
+# Or estimator using the SDCAOptimizer.
+estimator = LinearClassifier(
+   feature_columns=[occupation, education_x_occupation],
+   optimizer=tf.contrib.linear_optimizer.SDCAOptimizer(
+     example_id_column='example_id',
+     symmetric_l2_regularization=2.0
+   ))
 
+# Input builders
+def input_fn_train: # returns x, y
+  ...
+def input_fn_eval: # returns x, y
+  ...
+estimator.fit(input_fn=input_fn_train)
+estimator.evaluate(input_fn=input_fn_eval)
+estimator.predict(x=x)
+```
 
-Parameters:
-  feature_columns: An iterable containing all the feature columns used by the
-    model. All items in the set should be instances of classes derived from
-    `FeatureColumn`.
-  model_dir: Directory to save model parameters, graph and etc.
-  n_classes: number of target classes. Default is binary classification.
-  weight_column_name: A string defining feature column name representing
-    weights. It is used to down weight or boost examples during training. It
-    will be multiplied by the loss of the example.
-  optimizer: The optimizer used to train the model. If specified, it should be
-    either an instance of `tf.Optimizer` or the SDCAOptimizer. If `None`, the
-    Ftrl optimizer will be used.
-  gradient_clip_norm: A float > 0. If provided, gradients are clipped
-    to their global norm with this clipping ratio. See tf.clip_by_global_norm
-    for more details.
-  config: RunConfig object to configure the runtime settings.
+Input of `fit` and `evaluate` should have following features,
+  otherwise there will be a `KeyError`:
+
+* if `weight_column_name` is not `None`, a feature with
+  `key=weight_column_name` whose value is a `Tensor`.
+* for each `column` in `feature_columns`:
+  - if `column` is a `SparseColumn`, a feature with `key=column.name`
+    whose `value` is a `SparseTensor`.
+  - if `column` is a `WeightedSparseColumn`, two features: the first with
+    `key` the id column name, the second with `key` the weight column name.
+    Both features' `value` must be a `SparseTensor`.
+  - if `column` is a `RealValuedColumn`, a feature with `key=column.name`
+    whose `value` is a `Tensor`.
+  - if `feature_columns` is `None`, then `input` must contains only real
+    valued `Tensor`.
 - - -
 
-#### `tf.contrib.learn.LinearClassifier.__init__(feature_columns=None, model_dir=None, n_classes=2, weight_column_name=None, optimizer=None, gradient_clip_norm=None, config=None)` {#LinearClassifier.__init__}
+#### `tf.contrib.learn.LinearClassifier.__init__(feature_columns, model_dir=None, n_classes=2, weight_column_name=None, optimizer=None, gradient_clip_norm=None, enable_centered_bias=True, config=None)` {#LinearClassifier.__init__}
+
+Construct a `LinearClassifier` estimator object.
+
+##### Args:
 
 
+*  <b>`feature_columns`</b>: An iterable containing all the feature columns used by
+    the model. All items in the set should be instances of classes derived
+    from `FeatureColumn`.
+*  <b>`model_dir`</b>: Directory to save model parameters, graph and etc. This can
+    also be used to load checkpoints from the directory into a estimator
+    to continue training a previously saved model.
+*  <b>`n_classes`</b>: number of target classes. Default is binary classification.
+*  <b>`weight_column_name`</b>: A string defining feature column name representing
+    weights. It is used to down weight or boost examples during training. It
+    will be multiplied by the loss of the example.
+*  <b>`optimizer`</b>: The optimizer used to train the model. If specified, it should
+    be either an instance of `tf.Optimizer` or the SDCAOptimizer. If `None`,
+    the Ftrl optimizer will be used.
+*  <b>`gradient_clip_norm`</b>: A `float` > 0. If provided, gradients are clipped
+    to their global norm with this clipping ratio. See
+    `tf.clip_by_global_norm` for more details.
+*  <b>`enable_centered_bias`</b>: A bool. If True, estimator will learn a centered
+    bias variable for each class. Rest of the model structure learns the
+    residual after centered bias.
+*  <b>`config`</b>: `RunConfig` object to configure the runtime settings.
+
+##### Returns:
+
+  A `LinearClassifier` estimator.
 
 
 - - -
@@ -2382,82 +2267,27 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.LinearClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#LinearClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.LinearClassifier.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#LinearClassifier.fit}
+#### `tf.contrib.learn.LinearClassifier.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#LinearClassifier.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -2470,7 +2300,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -2544,12 +2375,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -2572,38 +2403,54 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.LinearClassifier.predict(x=None, input_fn=None, batch_size=None)` {#LinearClassifier.predict}
+#### `tf.contrib.learn.LinearClassifier.predict(*args, **kwargs)` {#LinearClassifier.predict}
 
-Returns predictions for given features.
+Returns predicted classes for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: features.
+      input_fn: Input function. If set, x must be None.
+      batch_size: Override default batch size.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x must be None.
-*  <b>`batch_size`</b>: Override default batch size.
-
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
+    Returns:
+      Numpy array of predicted classes (or an iterable of predicted classes if
+      as_iterable is True).
 
 
 - - -
 
-#### `tf.contrib.learn.LinearClassifier.predict_proba(x=None, input_fn=None, batch_size=None)` {#LinearClassifier.predict_proba}
+#### `tf.contrib.learn.LinearClassifier.predict_proba(*args, **kwargs)` {#LinearClassifier.predict_proba}
 
-Returns prediction probabilities for given features.
+Returns prediction probabilities for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: features.
+      input_fn: Input function. If set, x and y must be None.
+      batch_size: Override default batch size.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x and y must be None.
-*  <b>`batch_size`</b>: Override default batch size.
-
-##### Returns:
-
-  Numpy array of predicted probabilities.
+    Returns:
+      Numpy array of predicted probabilities (or an iterable of predicted
+      probabilities if as_iterable is True).
 
 
 - - -
@@ -2646,58 +2493,80 @@ component of a nested object.
 
 Linear regressor model.
 
-  Example:
-  ```
-  installed_app_id = sparse_column_with_hash_bucket("installed_id", 1e6)
-  impression_app_id = sparse_column_with_hash_bucket("impression_id", 1e6)
+Train a linear regression model to predict target variable value given
+observation of feature values.
 
-  installed_x_impression = crossed_column(
-      [installed_app_id, impression_app_id])
+Example:
 
-  estimator = LinearRegressor(
-      feature_columns=[impression_app_id, installed_x_impression])
+```python
+education = sparse_column_with_hash_bucket(column_name="education",
+                                           hash_bucket_size=1000)
+occupation = sparse_column_with_hash_bucket(column_name="occupation",
+                                            hash_bucket_size=1000)
 
-  # Input builders
-  def input_fn_train: # returns x, y
-    ...
-  def input_fn_eval: # returns x, y
-    ...
-  estimator.fit(input_fn=input_fn_train)
-  estimator.evaluate(input_fn=input_fn_eval)
-  estimator.predict(x=x)
-  ```
+education_x_occupation = crossed_column(columns=[education, occupation],
+                                        hash_bucket_size=10000)
 
-  Input of `fit` and `evaluate` should have following features,
-    otherwise there will be a KeyError:
-      if `weight_column_name` is not None:
-        key=weight_column_name, value=a `Tensor`
-      for column in `feature_columns`:
-      - if isinstance(column, `SparseColumn`):
-          key=column.name, value=a `SparseTensor`
-      - if isinstance(column, `RealValuedColumn`):
-          key=column.name, value=a `Tensor`
-      - if `feauture_columns` is None:
-          input must contains only real valued `Tensor`.
+estimator = LinearRegressor(
+    feature_columns=[occupation, education_x_occupation])
 
-Parameters:
-  feature_columns: An iterable containing all the feature columns used by the
-    model. All items in the set should be instances of classes derived from
-    `FeatureColumn`.
-  model_dir: Directory to save model parameters, graph and etc.
-  weight_column_name: A string defining feature column name representing
-    weights. It is used to down weight or boost examples during training. It
-    will be multiplied by the loss of the example.
-  optimizer: An instance of `tf.Optimizer` used to train the model. If `None`,
-    will use an Ftrl optimizer.
-  gradient_clip_norm: A float > 0. If provided, gradients are clipped
-    to their global norm with this clipping ratio. See tf.clip_by_global_norm
-    for more details.
-  config: RunConfig object to configure the runtime settings.
+# Input builders
+def input_fn_train: # returns x, y
+  ...
+def input_fn_eval: # returns x, y
+  ...
+estimator.fit(input_fn=input_fn_train)
+estimator.evaluate(input_fn=input_fn_eval)
+estimator.predict(x=x)
+```
+
+Input of `fit` and `evaluate` should have following features,
+  otherwise there will be a KeyError:
+
+* if `weight_column_name` is not `None`:
+  key=weight_column_name, value=a `Tensor`
+* for column in `feature_columns`:
+  - if isinstance(column, `SparseColumn`):
+      key=column.name, value=a `SparseTensor`
+  - if isinstance(column, `WeightedSparseColumn`):
+      {key=id column name, value=a `SparseTensor`,
+       key=weight column name, value=a `SparseTensor`}
+  - if isinstance(column, `RealValuedColumn`):
+      key=column.name, value=a `Tensor`
+  - if `feature_columns` is `None`:
+      input must contains only real valued `Tensor`.
 - - -
 
-#### `tf.contrib.learn.LinearRegressor.__init__(feature_columns=None, model_dir=None, n_classes=2, weight_column_name=None, optimizer=None, gradient_clip_norm=None, config=None)` {#LinearRegressor.__init__}
+#### `tf.contrib.learn.LinearRegressor.__init__(feature_columns, model_dir=None, weight_column_name=None, optimizer=None, gradient_clip_norm=None, enable_centered_bias=True, target_dimension=1, config=None)` {#LinearRegressor.__init__}
+
+Construct a `LinearRegressor` estimator object.
+
+##### Args:
 
 
+*  <b>`feature_columns`</b>: An iterable containing all the feature columns used by
+    the model. All items in the set should be instances of classes derived
+    from `FeatureColumn`.
+*  <b>`model_dir`</b>: Directory to save model parameters, graph, etc. This can
+    also be used to load checkpoints from the directory into a estimator
+    to continue training a previously saved model.
+*  <b>`weight_column_name`</b>: A string defining feature column name representing
+    weights. It is used to down weight or boost examples during training. It
+    will be multiplied by the loss of the example.
+*  <b>`optimizer`</b>: An instance of `tf.Optimizer` used to train the model. If
+    `None`, will use an Ftrl optimizer.
+*  <b>`gradient_clip_norm`</b>: A `float` > 0. If provided, gradients are clipped
+    to their global norm with this clipping ratio. See
+    `tf.clip_by_global_norm` for more details.
+*  <b>`enable_centered_bias`</b>: A bool. If True, estimator will learn a centered
+    bias variable for each class. Rest of the model structure learns the
+    residual after centered bias.
+*  <b>`target_dimension`</b>: dimension of the target for multilabels.
+*  <b>`config`</b>: `RunConfig` object to configure the runtime settings.
+
+##### Returns:
+
+  A `LinearRegressor` estimator.
 
 
 - - -
@@ -2725,82 +2594,27 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.LinearRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#LinearRegressor.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
 
-#### `tf.contrib.learn.LinearRegressor.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None)` {#LinearRegressor.fit}
+#### `tf.contrib.learn.LinearRegressor.fit(x=None, y=None, input_fn=None, steps=None, batch_size=None, monitors=None, max_steps=None)` {#LinearRegressor.fit}
 
-Trains a model given training data `x` predictions and `y` targets.
-
-##### Args:
-
-
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-     iterator that returns arrays of features. The training input
-     samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-     iterator that returns array of targets. The training target values
-     (class labels in classification, real numbers in regression). If set,
-     `input_fn` must be `None`.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`steps`</b>: Number of steps for which to train model. If `None`, train forever.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
-    inside the training loop.
-
-##### Returns:
-
-  `self`, for chaining.
+See `Trainable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If `x` or `y` are not `None` while `input_fn` is not `None`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If at least one of `x` and `y` is provided, and `input_fn` is
-      provided.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 - - -
@@ -2813,7 +2627,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -2887,12 +2702,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -2915,20 +2730,38 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.LinearRegressor.predict(x=None, input_fn=None, batch_size=None)` {#LinearRegressor.predict}
+#### `tf.contrib.learn.LinearRegressor.predict(*args, **kwargs)` {#LinearRegressor.predict}
 
-Returns predictions for given features.
+Returns predictions for given features. (deprecated arguments)
 
-##### Args:
+SOME ARGUMENTS ARE DEPRECATED. They will be removed after 2016-09-15.
+Instructions for updating:
+The default behavior of predict() is changing. The default value for
+as_iterable will change to True, and then the flag will be removed
+altogether. The behavior of this flag is described below.
 
+    Args:
+      x: Matrix of shape [n_samples, n_features...]. Can be iterator that
+         returns arrays of features. The training input samples for fitting the
+         model. If set, `input_fn` must be `None`.
+      input_fn: Input function. If set, `x` and 'batch_size' must be `None`.
+      batch_size: Override default batch size. If set, 'input_fn' must be
+        'None'.
+      outputs: list of `str`, name of the output to predict.
+        If `None`, returns all.
+      as_iterable: If True, return an iterable which keeps yielding predictions
+        for each example until inputs are exhausted. Note: The inputs must
+        terminate if you want the iterable to terminate (e.g. be sure to pass
+        num_epochs=1 if you are using something like read_batch_features).
 
-*  <b>`x`</b>: features.
-*  <b>`input_fn`</b>: Input function. If set, x must be None.
-*  <b>`batch_size`</b>: Override default batch size.
+    Returns:
+      A numpy array of predicted classes or regression values if the
+      constructor's `model_fn` returns a `Tensor` for `predictions` or a `dict`
+      of numpy arrays if `model_fn` returns a `dict`. Returns an iterable of
+      predictions if as_iterable is True.
 
-##### Returns:
-
-  Numpy array of predicted classes or regression values.
+    Raises:
+      ValueError: If x and input_fn are both provided or both `None`.
 
 
 - - -
@@ -3002,42 +2835,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowLinearClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowLinearClassifier.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -3057,7 +2862,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -3131,12 +2937,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -3254,42 +3060,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowLinearRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowLinearRegressor.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -3309,7 +3087,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -3383,12 +3162,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -3474,44 +3253,56 @@ component of a nested object.
 ### `class tf.contrib.learn.TensorFlowRNNClassifier` {#TensorFlowRNNClassifier}
 
 TensorFlow RNN Classifier model.
+- - -
 
-Parameters:
-  rnn_size: The size for rnn cell, e.g. size of your word embeddings.
-  cell_type: The type of rnn cell, including rnn, gru, and lstm.
-  num_layers: The number of layers of the rnn model.
-  input_op_fn: Function that will transform the input tensor, such as
+#### `tf.contrib.learn.TensorFlowRNNClassifier.__init__(rnn_size, n_classes, cell_type='gru', num_layers=1, input_op_fn=null_input_op_fn, initial_state=None, bidirectional=False, sequence_length=None, attn_length=None, attn_size=None, attn_vec_size=None, batch_size=32, steps=50, optimizer='Adagrad', learning_rate=0.1, class_weight=None, clip_gradients=5.0, continue_training=False, config=None, verbose=1)` {#TensorFlowRNNClassifier.__init__}
+
+Initializes a TensorFlowRNNClassifier instance.
+
+##### Args:
+
+
+*  <b>`rnn_size`</b>: The size for rnn cell, e.g. size of your word embeddings.
+*  <b>`cell_type`</b>: The type of rnn cell, including rnn, gru, and lstm.
+*  <b>`num_layers`</b>: The number of layers of the rnn model.
+*  <b>`input_op_fn`</b>: Function that will transform the input tensor, such as
     creating word embeddings, byte list, etc. This takes
     an argument x for input and returns transformed x.
-  bidirectional: boolean, Whether this is a bidirectional rnn.
-  sequence_length: If sequence_length is provided, dynamic calculation is
-    performed. This saves computational time when unrolling past max sequence
-    length.
-  initial_state: An initial state for the RNN. This must be a tensor of
+*  <b>`bidirectional`</b>: boolean, Whether this is a bidirectional rnn.
+*  <b>`sequence_length`</b>: If sequence_length is provided, dynamic calculation
+    is performed. This saves computational time when unrolling past max
+    sequence length.
+*  <b>`initial_state`</b>: An initial state for the RNN. This must be a tensor of
     appropriate type and shape [batch_size x cell.state_size].
-  n_classes: Number of classes in the target.
-  batch_size: Mini batch size.
-  steps: Number of steps to run over data.
-  optimizer: Optimizer name (or class), for example "SGD", "Adam", "Adagrad".
-  learning_rate: If this is constant float value, no decay function is
+*  <b>`attn_length`</b>: integer, the size of attention vector attached to rnn cells.
+*  <b>`attn_size`</b>: integer, the size of an attention window attached to rnn cells.
+*  <b>`attn_vec_size`</b>: integer, the number of convolutional features calculated on
+    attention state and the size of the hidden layer built from base cell state.
+*  <b>`n_classes`</b>: Number of classes in the target.
+*  <b>`batch_size`</b>: Mini batch size.
+*  <b>`steps`</b>: Number of steps to run over data.
+*  <b>`optimizer`</b>: Optimizer name (or class), for example "SGD", "Adam",
+    "Adagrad".
+*  <b>`learning_rate`</b>: If this is constant float value, no decay function is
     used. Instead, a customized decay function can be passed that accepts
     global_step as parameter and returns a Tensor.
     e.g. exponential decay function:
+
+    ````python
     def exp_decay(global_step):
         return tf.train.exponential_decay(
             learning_rate=0.1, global_step,
             decay_steps=2, decay_rate=0.001)
-  class_weight: None or list of n_classes floats. Weight associated with
+    ````
+
+
+*  <b>`class_weight`</b>: None or list of n_classes floats. Weight associated with
     classes for loss computation. If not given, all classes are
     supposed to have weight one.
-  continue_training: when continue_training is True, once initialized
+*  <b>`continue_training`</b>: when continue_training is True, once initialized
     model will be continuely trained on every call of fit.
-  config: RunConfig object that controls the configurations of the session,
+*  <b>`config`</b>: RunConfig object that controls the configurations of the session,
     e.g. num_cores, gpu_memory_fraction, etc.
-- - -
-
-#### `tf.contrib.learn.TensorFlowRNNClassifier.__init__(rnn_size, n_classes, cell_type='gru', num_layers=1, input_op_fn=null_input_op_fn, initial_state=None, bidirectional=False, sequence_length=None, batch_size=32, steps=50, optimizer='Adagrad', learning_rate=0.1, class_weight=None, clip_gradients=5.0, continue_training=False, config=None, verbose=1)` {#TensorFlowRNNClassifier.__init__}
-
-
 
 
 - - -
@@ -3523,9 +3314,27 @@ Returns bias of the rnn layer.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowRNNClassifier.evaluate(x=None, y=None, input_fn=None, steps=None)` {#TensorFlowRNNClassifier.evaluate}
+#### `tf.contrib.learn.TensorFlowRNNClassifier.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowRNNClassifier.evaluate}
 
-See base class.
+Evaluates given model with provided evaluation data.
+
+See superclass Estimator for more details.
+
+##### Args:
+
+
+*  <b>`x`</b>: features.
+*  <b>`y`</b>: targets.
+*  <b>`input_fn`</b>: Input function.
+*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called.
+*  <b>`batch_size`</b>: minibatch size to use on the input.
+*  <b>`steps`</b>: Number of steps for which to evaluate model.
+*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metrics are used.
+*  <b>`name`</b>: Name of the evaluation.
+
+##### Returns:
+
+  Returns `dict` with evaluation results.
 
 
 - - -
@@ -3572,7 +3381,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -3783,44 +3593,57 @@ Returns weights of the rnn layer.
 ### `class tf.contrib.learn.TensorFlowRNNRegressor` {#TensorFlowRNNRegressor}
 
 TensorFlow RNN Regressor model.
+- - -
 
-Parameters:
-  rnn_size: The size for rnn cell, e.g. size of your word embeddings.
-  cell_type: The type of rnn cell, including rnn, gru, and lstm.
-  num_layers: The number of layers of the rnn model.
-  input_op_fn: Function that will transform the input tensor, such as
+#### `tf.contrib.learn.TensorFlowRNNRegressor.__init__(rnn_size, cell_type='gru', num_layers=1, input_op_fn=null_input_op_fn, initial_state=None, bidirectional=False, sequence_length=None, attn_length=None, attn_size=None, attn_vec_size=None, n_classes=0, batch_size=32, steps=50, optimizer='Adagrad', learning_rate=0.1, clip_gradients=5.0, continue_training=False, config=None, verbose=1)` {#TensorFlowRNNRegressor.__init__}
+
+Initializes a TensorFlowRNNRegressor instance.
+
+##### Args:
+
+
+*  <b>`rnn_size`</b>: The size for rnn cell, e.g. size of your word embeddings.
+*  <b>`cell_type`</b>: The type of rnn cell, including rnn, gru, and lstm.
+*  <b>`num_layers`</b>: The number of layers of the rnn model.
+*  <b>`input_op_fn`</b>: Function that will transform the input tensor, such as
     creating word embeddings, byte list, etc. This takes
     an argument x for input and returns transformed x.
-  bidirectional: boolean, Whether this is a bidirectional rnn.
-  sequence_length: If sequence_length is provided, dynamic calculation is
-    performed. This saves computational time when unrolling past max sequence
-    length.
-  initial_state: An initial state for the RNN. This must be a tensor of
+*  <b>`bidirectional`</b>: boolean, Whether this is a bidirectional rnn.
+*  <b>`sequence_length`</b>: If sequence_length is provided, dynamic calculation
+    is performed. This saves computational time when unrolling past max
+    sequence length.
+*  <b>`attn_length`</b>: integer, the size of attention vector attached to rnn cells.
+*  <b>`attn_size`</b>: integer, the size of an attention window attached to rnn cells.
+*  <b>`attn_vec_size`</b>: integer, the number of convolutional features calculated on
+    attention state and the size of the hidden layer built from base cell state.
+*  <b>`initial_state`</b>: An initial state for the RNN. This must be a tensor of
     appropriate type and shape [batch_size x cell.state_size].
-  batch_size: Mini batch size.
-  steps: Number of steps to run over data.
-  optimizer: Optimizer name (or class), for example "SGD", "Adam", "Adagrad".
-  learning_rate: If this is constant float value, no decay function is
+*  <b>`batch_size`</b>: Mini batch size.
+*  <b>`steps`</b>: Number of steps to run over data.
+*  <b>`optimizer`</b>: Optimizer name (or class), for example "SGD", "Adam",
+    "Adagrad".
+*  <b>`learning_rate`</b>: If this is constant float value, no decay function is
     used. Instead, a customized decay function can be passed that accepts
     global_step as parameter and returns a Tensor.
     e.g. exponential decay function:
+
+    ````python
     def exp_decay(global_step):
         return tf.train.exponential_decay(
             learning_rate=0.1, global_step,
             decay_steps=2, decay_rate=0.001)
-  continue_training: when continue_training is True, once initialized
+    ````
+
+
+*  <b>`continue_training`</b>: when continue_training is True, once initialized
     model will be continuely trained on every call of fit.
-  config: RunConfig object that controls the configurations of the
+*  <b>`config`</b>: RunConfig object that controls the configurations of the
     session, e.g. num_cores, gpu_memory_fraction, etc.
-  verbose: Controls the verbosity, possible values:
-    0: the algorithm and debug information is muted.
-    1: trainer prints the progress.
-    2: log device placement is printed.
-- - -
+*  <b>`verbose`</b>: Controls the verbosity, possible values:
 
-#### `tf.contrib.learn.TensorFlowRNNRegressor.__init__(rnn_size, cell_type='gru', num_layers=1, input_op_fn=null_input_op_fn, initial_state=None, bidirectional=False, sequence_length=None, n_classes=0, batch_size=32, steps=50, optimizer='Adagrad', learning_rate=0.1, clip_gradients=5.0, continue_training=False, config=None, verbose=1)` {#TensorFlowRNNRegressor.__init__}
-
-
+    * 0: the algorithm and debug information is muted.
+    * 1: trainer prints the progress.
+    * 2: log device placement is printed.
 
 
 - - -
@@ -3832,9 +3655,27 @@ Returns bias of the rnn layer.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowRNNRegressor.evaluate(x=None, y=None, input_fn=None, steps=None)` {#TensorFlowRNNRegressor.evaluate}
+#### `tf.contrib.learn.TensorFlowRNNRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowRNNRegressor.evaluate}
 
-See base class.
+Evaluates given model with provided evaluation data.
+
+See superclass Estimator for more details.
+
+##### Args:
+
+
+*  <b>`x`</b>: features.
+*  <b>`y`</b>: targets.
+*  <b>`input_fn`</b>: Input function.
+*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called.
+*  <b>`batch_size`</b>: minibatch size to use on the input.
+*  <b>`steps`</b>: Number of steps for which to evaluate model.
+*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metrics are used.
+*  <b>`name`</b>: Name of the evaluation.
+
+##### Returns:
+
+  Returns `dict` with evaluation results.
 
 
 - - -
@@ -3881,7 +3722,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -4124,42 +3966,14 @@ Returns weights of deep neural network part.
 
 #### `tf.contrib.learn.TensorFlowRegressor.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=None, steps=None, metrics=None, name=None)` {#TensorFlowRegressor.evaluate}
 
-Evaluates given model with provided evaluation data.
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`y`</b>: targets.
-*  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
-    `None`.
-*  <b>`feed_fn`</b>: Function creating a feed dict every time it is called. Called
-    once per iteration.
-*  <b>`batch_size`</b>: minibatch size to use on the input, defaults to first
-    dimension of `x`. Must be `None` if `input_fn` is provided.
-*  <b>`steps`</b>: Number of steps for which to evaluate model. If `None`, evaluate
-    forever.
-*  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
-    are used; if {}, no metrics are used. If model has one output (i.e.,
-    returning single predction), keys are `str`, e.g. `'accuracy'` - just a
-    name of the metric that will show up in the logs / summaries.
-    Otherwise, keys are tuple of two `str`, e.g. `('accuracy', 'classes')`
-    - name of the metric and name of `Tensor` in the predictions to run
-    this metric on. Metric ops should support streaming, e.g., returning
-    update_op and value tensors. See more details in
-    ../../../../metrics/python/metrics/ops/streaming_metrics.py.
-*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
-    different data sets, such as evaluate on training data vs test data.
-
-##### Returns:
-
-  Returns `dict` with evaluation results.
+See `Evaluable`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: If at least one of `x` or `y` is provided, and at least one of
       `input_fn` or `feed_fn` is provided.
+      Or if `metrics` is not `None` or `dict`.
 
 
 - - -
@@ -4179,7 +3993,8 @@ Get parameters for this estimator.
 
 
 *  <b>`deep`</b>: boolean, optional
-    If True, will return the parameters for this estimator and
+
+    If `True`, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
 ##### Returns:
@@ -4253,12 +4068,12 @@ to converge, and you want to split up training into subparts.
 ##### Args:
 
 
-*  <b>`x`</b>: matrix or tensor of shape [n_samples, n_features...]. Can be
-    iterator that returns arrays of features. The training input
-    samples for fitting the model. If set, `input_fn` must be `None`.
-*  <b>`y`</b>: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
-    iterator that returns array of targets. The training target values
-    (class label in classification, real numbers in regression). If set,
+*  <b>`x`</b>: Matrix of shape [n_samples, n_features...]. Can be iterator that
+     returns arrays of features. The training input samples for fitting the
+     model. If set, `input_fn` must be `None`.
+*  <b>`y`</b>: Vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
+     iterator that returns array of targets. The training target values
+     (class labels in classification, real numbers in regression). If set,
      `input_fn` must be `None`.
 *  <b>`input_fn`</b>: Input function. If set, `x`, `y`, and `batch_size` must be
     `None`.
@@ -4355,9 +4170,13 @@ Perform various training, evaluation, and inference actions on a graph.
 ### `class tf.contrib.learn.RunConfig` {#RunConfig}
 
 This class specifies the specific configurations for the run.
+
+If you're a Google-internal user using command line flags with learn_runner.py
+(for instance, to do distributed training or to use parameter servers), you
+probably want to use learn_runner.EstimatorConfig instead.
 - - -
 
-#### `tf.contrib.learn.RunConfig.__init__(master='', task=0, num_ps_replicas=0, num_cores=4, log_device_placement=False, gpu_memory_fraction=1, tf_random_seed=42, save_summary_steps=100, save_checkpoints_secs=60, keep_checkpoint_max=5, keep_checkpoint_every_n_hours=10000)` {#RunConfig.__init__}
+#### `tf.contrib.learn.RunConfig.__init__(master='', task=0, num_ps_replicas=0, num_cores=4, log_device_placement=False, gpu_memory_fraction=1, cluster_spec=None, tf_random_seed=None, save_summary_steps=100, save_checkpoints_secs=60, keep_checkpoint_max=5, keep_checkpoint_every_n_hours=10000)` {#RunConfig.__init__}
 
 Constructor.
 
@@ -4371,6 +4190,9 @@ Constructor.
 *  <b>`log_device_placement`</b>: Log the op placement to devices (default: False).
 *  <b>`gpu_memory_fraction`</b>: Fraction of GPU memory used by the process on
     each GPU uniformly on the same machine.
+*  <b>`cluster_spec`</b>: a tf.train.ClusterSpec object that describes the cluster in
+    the case of distributed computation. If missing, reasonable assumptions
+    are made for the addresses of jobs.
 *  <b>`tf_random_seed`</b>: Random seed for TensorFlow initializers.
     Setting this value allows consistency between reruns.
 *  <b>`save_summary_steps`</b>: Save summaries every this many steps.
@@ -4393,7 +4215,9 @@ Evaluate a model loaded from a checkpoint.
 
 Given `graph`, a directory to write summaries to (`output_dir`), a checkpoint
 to restore variables from, and a `dict` of `Tensor`s to evaluate, run an eval
-loop for `max_steps` steps.
+loop for `max_steps` steps, or until an exception (generally, an
+end-of-input signal from a reader operation) is raised from running
+`eval_dict`.
 
 In each step of evaluation, all tensors in the `eval_dict` are evaluated, and
 every `log_every_steps` steps, they are logged. At the very end of evaluation,
@@ -4410,7 +4234,9 @@ and written to `output_dir`.
     Can be `None` if the graph doesn't require loading any variables.
 *  <b>`eval_dict`</b>: A `dict` mapping string names to tensors to evaluate. It is
     evaluated in every logging step. The result of the final evaluation is
-    returned. If update_op is None, then it's evaluated in every step.
+    returned. If `update_op` is None, then it's evaluated in every step. If
+    `max_steps` is `None`, this should depend on a reader that will raise an
+    end-of-inupt exception when the inputs are exhausted.
 *  <b>`update_op`</b>: A `Tensor` which is run in every step.
 *  <b>`global_step_tensor`</b>: A `Variable` containing the global step. If `None`,
     one is extracted from the graph using the same logic as in `Supervisor`.
@@ -4431,43 +4257,47 @@ and written to `output_dir`.
     eval steps were run.
 *  <b>`global_step`</b>: The global step this evaluation corresponds to.
 
+##### Raises:
+
+
+*  <b>`ValueError`</b>: if `output_dir` is empty.
+
 
 - - -
 
 ### `tf.contrib.learn.infer(restore_checkpoint_path, output_dict, feed_dict=None)` {#infer}
 
+Restore graph from `restore_checkpoint_path` and run `output_dict` tensors.
 
-
-
-- - -
-
-### `tf.contrib.learn.run_feeds(output_dict, feed_dicts, restore_checkpoint_path=None)` {#run_feeds}
-
-Run `output_dict` tensors with each input in `feed_dicts`.
-
-If `checkpoint_path` is supplied, restore from checkpoint. Otherwise, init all
-variables.
+If `restore_checkpoint_path` is supplied, restore from checkpoint. Otherwise,
+init all variables.
 
 ##### Args:
 
 
-*  <b>`output_dict`</b>: A `dict` mapping string names to `Tensor` objects to run.
-    Tensors must all be from the same graph.
-*  <b>`feed_dicts`</b>: Iterable of `dict` objects of input values to feed.
 *  <b>`restore_checkpoint_path`</b>: A string containing the path to a checkpoint to
     restore.
+*  <b>`output_dict`</b>: A `dict` mapping string names to `Tensor` objects to run.
+    Tensors must all be from the same graph.
+*  <b>`feed_dict`</b>: `dict` object mapping `Tensor` objects to input values to feed.
 
 ##### Returns:
 
-  A list of dicts of values read from `output_dict` tensors, one item in the
-  list for each item in `feed_dicts`. Keys are the same as `output_dict`,
-  values are the results read from the corresponding `Tensor` in
-  `output_dict`.
+  Dict of values read from `output_dict` tensors. Keys are the same as
+  `output_dict`, values are the results read from the corresponding `Tensor`
+  in `output_dict`.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: if `output_dict` or `feed_dicts` is None or empty.
+
+
+- - -
+
+### `tf.contrib.learn.run_feeds(*args, **kwargs)` {#run_feeds}
+
+See run_feeds_iter(). Returns a `list` instead of an iterator.
 
 
 - - -
@@ -4494,7 +4324,7 @@ Run `output_dict` tensors `n` times, with the same `feed_dict` each run.
 
 - - -
 
-### `tf.contrib.learn.train(graph, output_dir, train_op, loss_op, global_step_tensor=None, init_op=None, init_feed_dict=None, init_fn=None, log_every_steps=10, supervisor_is_chief=True, supervisor_master='', supervisor_save_model_secs=600, supervisor_save_summaries_steps=100, feed_fn=None, steps=None, fail_on_nan_loss=True, monitors=None)` {#train}
+### `tf.contrib.learn.train(graph, output_dir, train_op, loss_op, global_step_tensor=None, init_op=None, init_feed_dict=None, init_fn=None, log_every_steps=10, supervisor_is_chief=True, supervisor_master='', supervisor_save_model_secs=600, keep_checkpoint_max=5, supervisor_save_summaries_steps=100, feed_fn=None, steps=None, fail_on_nan_loss=True, monitors=None, max_steps=None)` {#train}
 
 Train a model.
 
@@ -4533,6 +4363,10 @@ program is terminated with exit code 1.
 *  <b>`supervisor_master`</b>: The master string to use when preparing the session.
 *  <b>`supervisor_save_model_secs`</b>: Save a checkpoint every
     `supervisor_save_model_secs` seconds when training.
+*  <b>`keep_checkpoint_max`</b>: The maximum number of recent checkpoint files to
+    keep. As new files are created, older files are deleted. If None or 0,
+    all checkpoint files are kept. This is simply passed as the max_to_keep
+    arg to tf.Saver constructor.
 *  <b>`supervisor_save_summaries_steps`</b>: Save summaries every
     `supervisor_save_summaries_steps` seconds when training.
 *  <b>`feed_fn`</b>: A function that is called every iteration to produce a `feed_dict`
@@ -4542,6 +4376,10 @@ program is terminated with exit code 1.
     evaluates to `NaN`. If false, continue training as if nothing happened.
 *  <b>`monitors`</b>: List of `BaseMonitor` subclass instances. Used for callbacks
     inside the training loop.
+*  <b>`max_steps`</b>: Number of total steps for which to train model. If `None`,
+    train forever. Two calls fit(steps=100) means 200 training iterations.
+    On the other hand two calls of fit(max_steps=100) means, second call
+    will not do any iteration since first call did all 100 steps.
 
 ##### Returns:
 
@@ -4550,11 +4388,12 @@ program is terminated with exit code 1.
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If `global_step_tensor` is not provided. See
-      `tf.contrib.framework.get_global_step` for how we look it up if not
-      provided explicitly.
+*  <b>`ValueError`</b>: If `output_dir`, `train_op`, `loss_op`, or `global_step_tensor`
+    is not provided. See `tf.contrib.framework.get_global_step` for how we
+    look up the latter if not provided explicitly.
 *  <b>`NanLossDuringTrainingError`</b>: If `fail_on_nan_loss` is `True`, and loss ever
-      evaluates to `NaN`.
+    evaluates to `NaN`.
+*  <b>`ValueError`</b>: If both `steps` and `max_steps` are not `None`.
 
 
 
@@ -4582,12 +4421,45 @@ Extract data from dask.Series for labels.
 
 Extract data from pandas.DataFrame for predictors.
 
+Given a DataFrame, will extract the values and cast them to float. The
+DataFrame is expected to contain values of type int, float or bool.
+
+##### Args:
+
+
+*  <b>`data`</b>: `pandas.DataFrame` containing the data to be extracted.
+
+##### Returns:
+
+  A numpy `ndarray` of the DataFrame's values as floats.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: if data contains types other than int, float or bool.
+
 
 - - -
 
 ### `tf.contrib.learn.extract_pandas_labels(labels)` {#extract_pandas_labels}
 
 Extract data from pandas.DataFrame for labels.
+
+##### Args:
+
+
+*  <b>`labels`</b>: `pandas.DataFrame` or `pandas.Series` containing one column of
+    labels to be extracted.
+
+##### Returns:
+
+  A numpy `ndarray` of labels from the DataFrame.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: if more than one column is found or type is not int, float or
+    bool.
 
 
 - - -
@@ -4596,10 +4468,19 @@ Extract data from pandas.DataFrame for labels.
 
 Extracts numpy matrix from pandas DataFrame.
 
+##### Args:
+
+
+*  <b>`data`</b>: `pandas.DataFrame` containing the data to be extracted.
+
+##### Returns:
+
+  A numpy `ndarray` of the DataFrame's values.
+
 
 - - -
 
-### `tf.contrib.learn.read_batch_examples(file_pattern, batch_size, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, num_threads=1, read_batch_size=1, name=None)` {#read_batch_examples}
+### `tf.contrib.learn.read_batch_examples(file_pattern, batch_size, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, num_threads=1, read_batch_size=1, parse_fn=None, name=None)` {#read_batch_examples}
 
 Adds operations to read, queue, batch `Example` protos.
 
@@ -4611,6 +4492,8 @@ All queue runners are added to the queue runners collection, and may be
 started via `start_queue_runners`.
 
 All ops are added to the default graph.
+
+Use `parse_fn` if you need to do parsing / processing on single examples.
 
 ##### Args:
 
@@ -4629,11 +4512,14 @@ All ops are added to the default graph.
 *  <b>`num_threads`</b>: The number of threads enqueuing examples.
 *  <b>`read_batch_size`</b>: An int or scalar `Tensor` specifying the number of
     records to read at once
+*  <b>`parse_fn`</b>: Parsing function, takes `Example` Tensor returns parsed
+    representation. If `None`, no parsing is done.
 *  <b>`name`</b>: Name of resulting op.
 
 ##### Returns:
 
-  String `Tensor` of batched `Example` proto.
+  String `Tensor` of batched `Example` proto. If `keep_keys` is True, then
+  returns tuple of string `Tensor`s, where first value is the key.
 
 ##### Raises:
 
@@ -4643,7 +4529,7 @@ All ops are added to the default graph.
 
 - - -
 
-### `tf.contrib.learn.read_batch_features(file_pattern, batch_size, features, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, reader_num_threads=1, parser_num_threads=1, name=None)` {#read_batch_features}
+### `tf.contrib.learn.read_batch_features(file_pattern, batch_size, features, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, feature_queue_capacity=100, reader_num_threads=1, parser_num_threads=1, name=None)` {#read_batch_features}
 
 Adds operations to read, queue, batch and parse `Example` protos.
 
@@ -4673,13 +4559,17 @@ All ops are added to the default graph.
     creates a variable that must be initialized, so call
     tf.initialize_local_variables() as shown in the tests.
 *  <b>`queue_capacity`</b>: Capacity for input queue.
+*  <b>`feature_queue_capacity`</b>: Capacity of the parsed features queue. Set this
+    value to a small number, for example 5 if the parsed features are large.
 *  <b>`reader_num_threads`</b>: The number of threads to read examples.
 *  <b>`parser_num_threads`</b>: The number of threads to parse examples.
+    records to read at once
 *  <b>`name`</b>: Name of resulting op.
 
 ##### Returns:
 
   A dict of `Tensor` or `SparseTensor` objects for each in `features`.
+  If `keep_keys` is `True`, returns tuple of string `Tensor` and above dict.
 
 ##### Raises:
 

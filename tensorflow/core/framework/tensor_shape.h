@@ -197,7 +197,6 @@ class TensorShape {
   // an extra word of storage.
   friend class Tensor;
   friend class TensorShapeTestHelper;
-  friend class BitcastOp;
   DataType data_type() const { return static_cast<DataType>(buf()[13]); }
   void set_data_type(DataType dt) {
     // We only have 8 bits available to store DataType, so make sure it fits
@@ -259,6 +258,10 @@ class TensorShapeUtils {
 
   static bool IsMatrix(const TensorShape& shape) { return shape.dims() == 2; }
 
+  static bool IsSquareMatrix(const TensorShape& shape) {
+    return shape.dims() == 2 && shape.dim_size(0) == shape.dim_size(1);
+  }
+
   static bool IsMatrixOrHigher(const TensorShape& shape) {
     return shape.dims() >= 2;
   }
@@ -267,6 +270,8 @@ class TensorShapeUtils {
   /// `dims[0]`, `dims[1]`, ..., `dims[n-1]`.
   static Status MakeShape(const int32* dims, int64 n, TensorShape* out);
   static Status MakeShape(const int64* dims, int64 n, TensorShape* out);
+  static Status MakeShape(gtl::ArraySlice<int32> shape, TensorShape* out);
+  static Status MakeShape(gtl::ArraySlice<int64> shape, TensorShape* out);
 
   static string ShapeListString(const gtl::ArraySlice<TensorShape>& shapes);
 
