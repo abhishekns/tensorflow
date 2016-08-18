@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow.python.platform
-
 import numpy
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
@@ -70,6 +68,7 @@ def convert_to(images, labels, name):
         'label': _int64_feature(int(labels[index])),
         'image_raw': _bytes_feature(image_raw)}))
     writer.write(example.SerializeToString())
+  writer.close()
 
 
 def main(argv):

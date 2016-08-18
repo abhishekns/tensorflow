@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ limitations under the License.
 #include <string>
 #include <utility>
 #include <vector>
-// NOTE(skal): we don't '#include <setjmp.h>' before png/png.h as it otherwise
+// NOTE(skal): we don't '#include <setjmp.h>' before png.h as it otherwise
 // provokes a compile error. We instead let png.h include what is needed.
 
-#include "external/png_archive/libpng-1.2.53/png.h"
 #include "tensorflow/core/lib/core/casts.h"
 #include "tensorflow/core/lib/png/png_io.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/port.h"  // endian
+#include "tensorflow/core/platform/png.h"
+#include "tensorflow/core/platform/types.h"  // endian
 
 namespace tensorflow {
 namespace png {
@@ -46,8 +46,14 @@ namespace {
 
 // Convert from 8 bit components to 16. This works in-place.
 static void Convert8to16(const uint8* p8, int num_comps, int p8_row_bytes,
-                         int width, int height, uint16* p16,
+                         int width, int height_in, uint16* p16,
                          int p16_row_bytes) {
+  // Force height*row_bytes computations to use 64 bits. Height*width is
+  // enforced to < 29 bits in decode_png_op.cc, but height*row_bytes is
+  // height*width*channels*(8bit?1:2) which is therefore only constrained to <
+  // 33 bits.
+  int64 height = static_cast<int64>(height_in);
+
   // Adjust pointers to copy backwards
   width *= num_comps;
   CPTR_INC(uint8, p8, (height - 1) * p8_row_bytes + (width - 1) * sizeof(*p8));
@@ -249,7 +255,6 @@ bool CommonInitDecode(StringPiece png_string, int desired_channels,
 
   png_set_packing(context->png_ptr);
   context->num_passes = png_set_interlace_handling(context->png_ptr);
-  png_read_update_info(context->png_ptr, context->info_ptr);
 
 #ifdef IS_LITTLE_ENDIAN
   if (desired_channel_bits > 8) png_set_swap(context->png_ptr);
@@ -272,6 +277,9 @@ bool CommonInitDecode(StringPiece png_string, int desired_channels,
     if (is_gray)
       png_set_gray_to_rgb(context->png_ptr);  // Enable gray -> RGB conversion
   }
+
+  // Must come last to incorporate all requested transformations.
+  png_read_update_info(context->png_ptr, context->info_ptr);
   return true;
 }
 

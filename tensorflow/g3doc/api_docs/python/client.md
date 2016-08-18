@@ -30,7 +30,7 @@ c = a * b
 sess = tf.Session()
 
 # Evaluate the tensor `c`.
-print sess.run(c)
+print(sess.run(c))
 ```
 
 A session may own resources, such as
@@ -53,7 +53,7 @@ with tf.Session() as sess:
 ```
 
 The [`ConfigProto`]
-(https://tensorflow.googlesource.com/tensorflow/+/master/tensorflow/core/framework/config.proto)
+(https://www.tensorflow.org/code/tensorflow/core/protobuf/config.proto)
 protocol buffer exposes various configuration options for a
 session. For example, to create a session that uses soft constraints
 for device placement, and log the resulting placement decisions,
@@ -87,13 +87,13 @@ the session constructor.
     Defaults to using an in-process engine. At present, no value
     other than the empty string is supported.
 *  <b>`graph`</b>: (Optional.) The `Graph` to be launched (described above).
-*  <b>`config`</b>: (Optional.) A [`ConfigProto`](https://tensorflow.googlesource.com/tensorflow/+/master/tensorflow/core/framework/config.proto)
+*  <b>`config`</b>: (Optional.) A [`ConfigProto`](https://www.tensorflow.org/code/tensorflow/core/protobuf/config.proto)
     protocol buffer with configuration options for the session.
 
 
 - - -
 
-#### `tf.Session.run(fetches, feed_dict=None)` {#Session.run}
+#### `tf.Session.run(fetches, feed_dict=None, options=None, run_metadata=None)` {#Session.run}
 
 Runs the operations and evaluates the tensors in `fetches`.
 
@@ -102,21 +102,25 @@ running the necessary graph fragment to execute every `Operation`
 and evaluate every `Tensor` in `fetches`, substituting the values in
 `feed_dict` for the corresponding input values.
 
-The `fetches` argument may be a list of graph elements or a single
-graph element, and these determine the return value of this
+The `fetches` argument may be a single graph element, a list of
+graph elements, or a dictionary whose values are the above. The type of
+`fetches` determines the return value of this
 method. A graph element can be one of the following types:
 
-* If the *i*th element of `fetches` is an
-  [`Operation`](../../api_docs/python/framework.md#Operation), the *i*th
-  return value will be `None`.
-* If the *i*th element of `fetches` is a
-  [`Tensor`](../../api_docs/python/framework.md#Tensor), the *i*th return
-  value will be a numpy ndarray containing the value of that tensor.
-* If the *i*th element of `fetches` is a
+* If an element of `fetches` is an
+  [`Operation`](../../api_docs/python/framework.md#Operation), the
+  corresponding fetched value will be `None`.
+* If an element of `fetches` is a
+  [`Tensor`](../../api_docs/python/framework.md#Tensor), the corresponding
+  fetched value will be a numpy ndarray containing the value of that tensor.
+* If an element of `fetches` is a
   [`SparseTensor`](../../api_docs/python/sparse_ops.md#SparseTensor),
-  the *i*th return value will be a
+  the corresponding fetched value will be a
   [`SparseTensorValue`](../../api_docs/python/sparse_ops.md#SparseTensorValue)
   containing the value of that sparse tensor.
+* If an element of `fetches` is produced by a `get_tensor_handle` op,
+  the corresponding fetched value will be a numpy ndarray containing the
+  handle of that tensor.
 
 The optional `feed_dict` argument allows the caller to override
 the value of tensors in the graph. Each key in `feed_dict` can be
@@ -133,18 +137,34 @@ one of the following types:
   the value should be a
   [`SparseTensorValue`](../../api_docs/python/sparse_ops.md#SparseTensorValue).
 
+Each value in `feed_dict` must be convertible to a numpy array of the dtype
+of the corresponding key.
+
+The optional `options` argument expects a [`RunOptions`] proto. The options
+allow controlling the behavior of this particular step (e.g. turning tracing
+on).
+
+The optional `run_metadata` argument expects a [`RunMetadata`] proto. When
+appropriate, the non-Tensor output of this step will be collected there. For
+example, when users turn on tracing in `options`, the profiled info will be
+collected into this argument and passed back.
+
 ##### Args:
 
 
-*  <b>`fetches`</b>: A single graph element, or a list of graph elements
-    (described above).
+*  <b>`fetches`</b>: A single graph element, a list of graph elements,
+    or a dictionary whose values are graph elements or lists of graph
+    elements (described above).
 *  <b>`feed_dict`</b>: A dictionary that maps graph elements to values
     (described above).
+*  <b>`options`</b>: A [`RunOptions`] protocol buffer
+*  <b>`run_metadata`</b>: A [`RunMetadata`] protocol buffer
 
 ##### Returns:
 
   Either a single value if `fetches` is a single graph element, or
-  a list of values if `fetches` is a list (described above).
+  a list of values if `fetches` is a list, or a dictionary with the
+  same keys as `fetches` if that is a dictionary (described above).
 
 ##### Raises:
 
@@ -166,8 +186,8 @@ Calling this method frees all resources associated with the session.
 
 ##### Raises:
 
-
-*  <b>`RuntimeError`</b>: If an error occurs while closing the session.
+  tf.errors.OpError: Or one of its subclasses if an error occurs while
+    closing the TensorFlow session.
 
 
 
@@ -196,7 +216,7 @@ sess = tf.Session()
 
 with sess.as_default():
   assert tf.get_default_session() is sess
-  print c.eval()
+  print(c.eval())
 ```
 
 To get the current default session, use
@@ -211,10 +231,10 @@ explicitly.
 c = tf.constant(...)
 sess = tf.Session()
 with sess.as_default():
-  print c.eval()
+  print(c.eval())
 # ...
 with sess.as_default():
-  print c.eval()
+  print(c.eval())
 
 sess.close()
 ```
@@ -258,7 +278,7 @@ a = tf.constant(5.0)
 b = tf.constant(6.0)
 c = a * b
 # We can just use 'c.eval()' without passing 'sess'
-print c.eval()
+print(c.eval())
 sess.close()
 ```
 
@@ -272,12 +292,12 @@ b = tf.constant(6.0)
 c = a * b
 with tf.Session():
   # We can also use 'c.eval()' here.
-  print c.eval()
+  print(c.eval())
 ```
 
 - - -
 
-#### `tf.InteractiveSession.__init__(target='', graph=None)` {#InteractiveSession.__init__}
+#### `tf.InteractiveSession.__init__(target='', graph=None, config=None)` {#InteractiveSession.__init__}
 
 Creates a new interactive TensorFlow session.
 
@@ -296,6 +316,7 @@ the session constructor.
     Defaults to using an in-process engine. At present, no value
     other than the empty string is supported.
 *  <b>`graph`</b>: (Optional.) The `Graph` to be launched (described above).
+*  <b>`config`</b>: (Optional) `ConfigProto` proto used to configure the session.
 
 
 - - -
@@ -316,7 +337,7 @@ Returns the default session for the current thread.
 The returned `Session` will be the innermost session on which a
 `Session` or `Session.as_default()` context has been entered.
 
-*N.B.* The default session is a property of the current thread. If you
+NOTE: The default session is a property of the current thread. If you
 create a new thread, and wish to use the default session in that
 thread, you must explicitly add a `with sess.as_default():` in that
 thread's function.
@@ -374,7 +395,8 @@ Creates a new `OpError` indicating that a particular op failed.
 ##### Args:
 
 
-*  <b>`node_def`</b>: The `graph_pb2.NodeDef` proto representing the op that failed.
+*  <b>`node_def`</b>: The `graph_pb2.NodeDef` proto representing the op that failed,
+    if known; otherwise None.
 *  <b>`op`</b>: The `ops.Operation` that failed, if known; otherwise None.
 *  <b>`message`</b>: The message string describing the failure.
 *  <b>`error_code`</b>: The `error_codes_pb2.Code` describing the error.
@@ -607,7 +629,7 @@ Creates an `AbortedError`.
 
 ### `class tf.errors.OutOfRangeError` {#OutOfRangeError}
 
-Raised when an operation executed past the valid range.
+Raised when an operation iterates past the valid input range.
 
 This exception is raised in "end-of-file" conditions, such as when a
 [`queue.dequeue()`](../../api_docs/python/io_ops.md#QueueBase.dequeue)

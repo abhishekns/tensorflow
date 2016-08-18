@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@ limitations under the License.
 #define TENSORFLOW_FRAMEWORK_LOOKUP_INTERFACE_H_
 
 #include "tensorflow/core/framework/resource_mgr.h"
-#include "tensorflow/core/public/status.h"
-#include "tensorflow/core/public/tensor.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/lib/core/status.h"
 
 namespace tensorflow {
 namespace lookup {
+
+// Forward declaration so we can define GetInitializableLookupTable() in
+// LookupInterface.
+class InitializableLookupTable;
 
 // Lookup interface for batch lookups used by table lookup ops.
 class LookupInterface : public ResourceBase {
@@ -53,6 +57,12 @@ class LookupInterface : public ResourceBase {
   virtual DataType value_dtype() const = 0;
 
   string DebugString() override { return "A lookup table"; }
+
+  // Returns an InitializableLookupTable, a subclass of LookupInterface, if the
+  // current object is an InitializableLookupTable. Otherwise, returns nullptr.
+  virtual InitializableLookupTable* GetInitializableLookupTable() {
+    return nullptr;
+  }
 
  protected:
   virtual ~LookupInterface() = default;

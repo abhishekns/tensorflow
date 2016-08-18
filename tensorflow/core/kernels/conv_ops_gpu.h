@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_
-#define THIRD_PARTY_TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_
+#ifndef TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_
+#define TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_
 
 #if GOOGLE_CUDA
 
-#include "tensorflow/stream_executor/scratch_allocator.h"
-#include "tensorflow/core/common_runtime/gpu_device_context.h"
+#include <tuple>
+#include "tensorflow/core/platform/stream_executor.h"
 
 namespace tensorflow {
 
-// TODO(zhengxq): move this to gpu_util.h. The use of such wrapers is wide
+// TODO(zhengxq): move this to gpu_util.h. The use of such wrappers is wide
 // spread.
 template <typename T>
 perftools::gputools::DeviceMemory<T> AsDeviceMemory(const T* cuda_memory,
@@ -57,15 +57,18 @@ class CudnnScratchAllocator : public perftools::gputools::ScratchAllocator {
   AllocateBytes(perftools::gputools::Stream* stream, int64 byte_size) override {
     Tensor temporary_memory;
 
+    AllocationAttributes allocation_attr;
+    allocation_attr.no_retry_on_failure = true;
     Status allocation_status(context_->allocate_temp(
-        DT_UINT8, TensorShape({byte_size}), &temporary_memory));
+        DT_UINT8, TensorShape({byte_size}), &temporary_memory,
+        AllocatorAttributes(), allocation_attr));
     if (!allocation_status.ok()) {
-      LOG(WARNING) << allocation_status;
-      context_->SetStatus(allocation_status);
       return perftools::gputools::port::StatusOr<
           perftools::gputools::DeviceMemory<uint8>>();
     }
-
+    // Hold the reference of the allocated tensors until the end of the
+    // allocator.
+    allocated_tensors_.push_back(temporary_memory);
     return perftools::gputools::port::StatusOr<
         perftools::gputools::DeviceMemory<uint8>>(
         AsDeviceMemory(temporary_memory.flat<uint8>().data(),
@@ -75,10 +78,94 @@ class CudnnScratchAllocator : public perftools::gputools::ScratchAllocator {
  private:
   int64 memory_limit_;
   OpKernelContext* context_;
+  std::vector<Tensor> allocated_tensors_;
+};
+
+struct ConvParameters {
+  int64 batch;
+  int64 in_depths;
+  int64 in_rows;
+  int64 in_cols;
+  int64 out_depths;
+  int64 filter_rows;
+  int64 filter_cols;
+  int64 stride_rows;
+  int64 stride_cols;
+  int64 padding_rows;
+  int64 padding_cols;
+  int device_id;
+
+  typedef std::tuple<int64, int64, int64, int64, int64, int64, int64, int64,
+                     int64, int64, int64, int>
+      DataType;
+
+  DataType get_data_as_tuple() const {
+    return std::make_tuple(batch, in_depths, in_rows, in_cols, out_depths,
+                           filter_rows, filter_cols, stride_rows, stride_cols,
+                           padding_rows, padding_cols, device_id);
+  }
+
+  bool operator==(const ConvParameters& other) const {
+    return this->get_data_as_tuple() == other.get_data_as_tuple();
+  }
+
+  bool operator!=(const ConvParameters& other) const {
+    return !(*this == other);
+  }
+
+  bool operator<(const ConvParameters& other) const {
+    return this->get_data_as_tuple() < other.get_data_as_tuple();
+  }
+};
+
+typedef Eigen::GpuDevice GPUDevice;
+
+// A helper class that looks up algorithm from conv-parameters. It is heavily
+// biased toward the last-seen parameter.
+template <>
+class ConvAlgorithmMap<GPUDevice> {
+ public:
+  typedef perftools::gputools::dnn::AlgorithmType AlgorithmType;
+
+  ConvAlgorithmMap() {}
+
+  bool Find(const ConvParameters& parameters, AlgorithmType* algorithm) const {
+    mutex_lock lock(mu_);
+    if (algorithm_map_.empty()) {
+      return false;
+    }
+    if (parameters != last_conv_parameters_) {
+      auto iter = algorithm_map_.find(parameters);
+      if (iter == algorithm_map_.end()) {
+        return false;
+      }
+      last_conv_parameters_ = parameters;
+      last_algorithm_ = iter->second;
+    }
+    *algorithm = last_algorithm_;
+    return true;
+  }
+
+  void Insert(const ConvParameters& parameters, AlgorithmType algorithm) {
+    mutex_lock lock(mu_);
+    last_conv_parameters_ = parameters;
+    last_algorithm_ = algorithm;
+    algorithm_map_[parameters] = algorithm;
+  }
+
+ private:
+  AlgorithmType FindAlgorithm(const ConvParameters& parameters);
+
+  mutable mutex mu_;
+  std::map<ConvParameters, AlgorithmType> algorithm_map_ GUARDED_BY(mu_);
+  mutable ConvParameters last_conv_parameters_ GUARDED_BY(mu_);
+  mutable AlgorithmType last_algorithm_ GUARDED_BY(mu_);
+
+  TF_DISALLOW_COPY_AND_ASSIGN(ConvAlgorithmMap);
 };
 
 }  // namespace tensorflow
 
 #endif  // GOOGLE_CUDA
 
-#endif  // THIRD_PARTY_TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_
+#endif  // TENSORFLOW_CORE_KERNELS_CONV_OPS_GPU_H_

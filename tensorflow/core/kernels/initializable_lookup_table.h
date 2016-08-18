@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 #define TENSORFLOW_KERNELS_INITIALIZABLE_LOOKUP_TABLE_H_
 
 #include "tensorflow/core/framework/lookup_interface.h"
+#include "tensorflow/core/platform/macros.h"
 
 namespace tensorflow {
 namespace lookup {
@@ -85,7 +86,7 @@ class InitializableLookupTable : public LookupInterface {
     // Returns a tensor that contains the current batch of 'value' values.
     virtual const Tensor& values() const = 0;
 
-    // Returns an error if one has occurred, otherwire returns Status::OK.
+    // Returns an error if one has occurred, otherwise returns Status::OK.
     virtual Status status() const = 0;
 
     // Returns the total number of elements that the iterator will produce.
@@ -94,6 +95,10 @@ class InitializableLookupTable : public LookupInterface {
    private:
     TF_DISALLOW_COPY_AND_ASSIGN(InitTableIterator);
   };
+
+  InitializableLookupTable* GetInitializableLookupTable() override {
+    return this;
+  }
 
  protected:
   // Prepares and allocates the underlying data structure to store the given

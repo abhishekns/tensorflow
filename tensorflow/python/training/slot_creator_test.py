@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import tensorflow.python.platform
-
 import tensorflow as tf
 from tensorflow.python.training import slot_creator
 
@@ -52,7 +50,8 @@ class SlotCreatorTest(tf.test.TestCase):
   def testCreateZerosSlotFromVariable(self):
     with self.test_session():
       v = tf.Variable([1.0, 2.5], name="var")
-      slot = slot_creator.create_zeros_slot(v, name="slot", dtype=tf.float64)
+      with tf.control_dependencies(None):
+        slot = slot_creator.create_zeros_slot(v, name="slot", dtype=tf.float64)
 
       tf.initialize_all_variables().run()
 
@@ -64,8 +63,8 @@ class SlotCreatorTest(tf.test.TestCase):
   def testCreateZerosSlotFromTensor(self):
     with self.test_session():
       v = tf.constant([1.0, 2.5], name="const")
-
-      slot = slot_creator.create_zeros_slot(v, name="slot")
+      with tf.control_dependencies(None):
+        slot = slot_creator.create_zeros_slot(v, name="slot")
 
       tf.initialize_all_variables().run()
 

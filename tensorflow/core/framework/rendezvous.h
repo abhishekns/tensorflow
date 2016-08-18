@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ limitations under the License.
 
 #include "tensorflow/core/framework/control_flow.h"
 #include "tensorflow/core/framework/device_base.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/lib/core/refcount.h"
-#include "tensorflow/core/public/status.h"
-#include "tensorflow/core/public/tensor.h"
+#include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/util/device_name_utils.h"
 
 namespace tensorflow {
@@ -44,7 +44,7 @@ class Rendezvous : public core::RefCounted {
     AllocatorAttributes alloc_attrs;
   };
 
-  // Constructs a rendezvouz key for the tensor of "name" sent from
+  // Constructs a rendezvous key for the tensor of "name" sent from
   // "src_device" to "dst_device". The tensor is generated in the frame
   // and iteration specified by "frame_iter".
   static string CreateKey(const string& src_device, uint64 src_incarnation,

@@ -1,5 +1,5 @@
-#!/bin/bash
-# Copyright 2015 Google Inc. All Rights Reserved.
+#!/usr/bin/env bash
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 
-
 set -e
 
-export CUDA_HOME=${CUDA_HOME:-/usr/local/cuda}
-
-if [ ! -d ${CUDA_HOME}/lib64 ]; then
-  echo "Failed to locate CUDA libs at ${CUDA_HOME}/lib64."
-  exit 1
-fi
-
-export CUDA_SO=$(\ls /usr/lib/x86_64-linux-gnu/libcuda* | \
+export CUDA_SO=$(\ls /usr/lib/x86_64-linux-gnu/libcuda.* | \
                     xargs -I{} echo '-v {}:{}')
 export DEVICES=$(\ls /dev/nvidia* | \
                     xargs -I{} echo '--device {}:{}')
@@ -34,4 +26,4 @@ if [[ "${DEVICES}" = "" ]]; then
   exit 1
 fi
 
-docker run -it -p 8888:8888 $CUDA_SO $DEVICES b.gcr.io/tensorflow/tensorflow-full-gpu "$@"
+docker run -it $CUDA_SO $DEVICES "$@"
