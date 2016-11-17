@@ -32,7 +32,7 @@ class SessionManagerTest(tf.test.TestCase):
     with tf.Graph().as_default():
       v = tf.Variable([1.0, 2.0, 3.0], name="v")
       sm = tf.train.SessionManager(ready_op=tf.report_uninitialized_variables())
-      sess = sm.prepare_session("", init_op=tf.initialize_all_variables())
+      sess = sm.prepare_session("", init_op=tf.global_variables_initializer())
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
 
   def testPrepareSessionSucceedsWithInitFeedDict(self):
@@ -41,7 +41,7 @@ class SessionManagerTest(tf.test.TestCase):
       v = tf.Variable(p, name="v")
       sm = tf.train.SessionManager(ready_op=tf.report_uninitialized_variables())
       sess = sm.prepare_session("",
-                                init_op=tf.initialize_all_variables(),
+                                init_op=tf.global_variables_initializer(),
                                 init_feed_dict={p: [1.0, 2.0, 3.0]})
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
 
@@ -59,7 +59,7 @@ class SessionManagerTest(tf.test.TestCase):
     try:
       gfile.DeleteRecursively(checkpoint_dir)
       gfile.DeleteRecursively(checkpoint_dir2)
-    except OSError:
+    except errors.OpError:
       pass                      # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -67,7 +67,7 @@ class SessionManagerTest(tf.test.TestCase):
       v = tf.Variable([1.0, 2.0, 3.0], name="v")
       sm = tf.train.SessionManager(ready_op=tf.report_uninitialized_variables())
       saver = tf.train.Saver({"v": v})
-      sess = sm.prepare_session("", init_op=tf.initialize_all_variables(),
+      sess = sm.prepare_session("", init_op=tf.global_variables_initializer(),
                                 saver=saver, checkpoint_dir=checkpoint_dir)
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
       checkpoint_filename = os.path.join(checkpoint_dir,
@@ -105,7 +105,7 @@ class SessionManagerTest(tf.test.TestCase):
     checkpoint_dir = os.path.join(self.get_temp_dir(), "recover_session")
     try:
       gfile.DeleteRecursively(checkpoint_dir)
-    except OSError:
+    except errors.OpError:
       pass                      # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -163,7 +163,7 @@ class SessionManagerTest(tf.test.TestCase):
                                   "recover_session_ready_for_local_init")
     try:
       gfile.DeleteRecursively(checkpoint_dir)
-    except OSError:
+    except errors.OpError:
       pass  # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -220,7 +220,7 @@ class SessionManagerTest(tf.test.TestCase):
         "recover_session_ready_for_local_init_fails_to_ready_local")
     try:
       gfile.DeleteRecursively(checkpoint_dir)
-    except OSError:
+    except errors.OpError:
       pass  # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -299,7 +299,7 @@ class SessionManagerTest(tf.test.TestCase):
         "recover_session_ready_for_local_init_fails_stil_run")
     try:
       gfile.DeleteRecursively(checkpoint_dir)
-    except OSError:
+    except errors.OpError:
       pass  # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -488,21 +488,6 @@ class SessionManagerTest(tf.test.TestCase):
                                  "Attempting to use uninitialized value v"):
       sm2.prepare_session("", init_op=None)
 
-  def testPrepareSessionReadyWithInit(self):
-    with tf.Graph().as_default():
-      v = tf.Variable(1, name="v")
-      is_v_initialized = tf.is_variable_initialized(v)
-      with self.test_session():
-        self.assertEqual(False, is_v_initialized.eval())
-      sm = tf.train.SessionManager()
-
-      # Prepare session returns a session even though v is not initialized
-      # because no ready_op was provided, so model is trivially ready
-      sess = sm.prepare_session("")
-      self.assertEqual(False, sess.run(is_v_initialized))
-      sess.run(v.initializer)
-      self.assertEqual(True, sess.run(is_v_initialized))
-
 
 class ObsoleteSessionManagerTest(tf.test.TestCase):
 
@@ -510,7 +495,7 @@ class ObsoleteSessionManagerTest(tf.test.TestCase):
     with tf.Graph().as_default():
       v = tf.Variable([1.0, 2.0, 3.0], name="v")
       sm = tf.train.SessionManager(ready_op=tf.assert_variables_initialized())
-      sess = sm.prepare_session("", init_op=tf.initialize_all_variables())
+      sess = sm.prepare_session("", init_op=tf.global_variables_initializer())
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
 
   def testPrepareSessionSucceedsWithInitFeedDict(self):
@@ -519,7 +504,7 @@ class ObsoleteSessionManagerTest(tf.test.TestCase):
       v = tf.Variable(p, name="v")
       sm = tf.train.SessionManager(ready_op=tf.assert_variables_initialized())
       sess = sm.prepare_session("",
-                                init_op=tf.initialize_all_variables(),
+                                init_op=tf.global_variables_initializer(),
                                 init_feed_dict={p: [1.0, 2.0, 3.0]})
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
 
@@ -537,7 +522,7 @@ class ObsoleteSessionManagerTest(tf.test.TestCase):
     try:
       gfile.DeleteRecursively(checkpoint_dir)
       gfile.DeleteRecursively(checkpoint_dir2)
-    except OSError:
+    except errors.OpError:
       pass                      # Ignore
     gfile.MakeDirs(checkpoint_dir)
 
@@ -545,7 +530,7 @@ class ObsoleteSessionManagerTest(tf.test.TestCase):
       v = tf.Variable([1.0, 2.0, 3.0], name="v")
       sm = tf.train.SessionManager(ready_op=tf.assert_variables_initialized())
       saver = tf.train.Saver({"v": v})
-      sess = sm.prepare_session("", init_op=tf.initialize_all_variables(),
+      sess = sm.prepare_session("", init_op=tf.global_variables_initializer(),
                                 saver=saver, checkpoint_dir=checkpoint_dir)
       self.assertAllClose([1.0, 2.0, 3.0], sess.run(v))
       checkpoint_filename = os.path.join(checkpoint_dir,
@@ -583,7 +568,7 @@ class ObsoleteSessionManagerTest(tf.test.TestCase):
     checkpoint_dir = os.path.join(self.get_temp_dir(), "recover_session")
     try:
       gfile.DeleteRecursively(checkpoint_dir)
-    except OSError:
+    except errors.OpError:
       pass                      # Ignore
     gfile.MakeDirs(checkpoint_dir)
 

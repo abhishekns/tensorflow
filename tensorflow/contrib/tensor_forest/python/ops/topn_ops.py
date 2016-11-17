@@ -28,20 +28,8 @@ TOPN_OPS_FILE = '_topn_ops.so'
 _topn_ops = None
 _ops_lock = threading.Lock()
 
-ops.NoGradient('TopNInsert')
-ops.NoGradient('TopNRemove')
-
-
-@ops.RegisterShape('TopNInsert')
-def Insert(unused_op):
-  """Shape function for Insert Op."""
-  return [[None], [None], [None]]
-
-
-@ops.RegisterShape('TopNRemove')
-def Remove(unused_op):
-  """Shape function for Remove Op."""
-  return [[None], [None]]
+ops.NotDifferentiable('TopNInsert')
+ops.NotDifferentiable('TopNRemove')
 
 
 # Workaround for the fact that importing tensorflow imports contrib

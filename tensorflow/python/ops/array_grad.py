@@ -23,11 +23,12 @@ from math import ceil
 
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
+from tensorflow.python.framework import sparse_tensor
 from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import sparse_ops
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import sparse_ops
 
 
 @ops.RegisterGradient("Pack")
@@ -89,6 +90,12 @@ def _ConcatGrad(op, grad):
   if isinstance(grad, ops.Tensor):
     # Get the inputs' tensor shapes
     sizes = _ExtractInputShapes(op.inputs[1:])
+    # The following line to be enabled once ready
+    # if len(sizes) > 16:
+    # sizes = array_ops.squeeze(array_ops.slice(
+    # array_ops.pack(sizes, axis=1), [concat_dim, 0], [1, -1]))
+    # out_grads = array_ops.split_v(grad, sizes, concat_dim)
+    # else:
     # pylint: disable=protected-access
     offset = gen_array_ops._concat_offset(concat_dim, sizes)
     # pylint: enable=protected-access
@@ -142,7 +149,7 @@ def _ConcatGrad(op, grad):
   return [None] + out_grads
 
 
-ops.NoGradient("ConcatOffset")
+ops.NotDifferentiable("ConcatOffset")
 
 
 @ops.RegisterGradient("Slice")
@@ -214,55 +221,72 @@ def _StridedSliceGradGrad(op, grad):
 def _SplitGrad(op, *grads):
   return None, array_ops.concat(op.inputs[0], list(grads))
 
+@ops.RegisterGradient("SplitV")
+def _SplitVGrad(op, *grads):
+  returnval = array_ops.concat(op.inputs[2], list(grads))
+  returnval = [returnval] + [None,] * (len(op.inputs) - 1)
+  print(returnval)
+  return returnval
 
-ops.NoGradient("Const")
+ops.NotDifferentiable("Const")
 
 
 @ops.RegisterGradient("Diag")
 def _DiagGrad(_, grad):
   return array_ops.diag_part(grad)
 
+
 @ops.RegisterGradient("DiagPart")
 def _DiagPartGrad(_, grad):
   return array_ops.diag(grad)
 
 
-@ops.RegisterGradient("BatchMatrixDiag")
-def _BatchMatrixDiagGrad(_, grad):
-  return array_ops.batch_matrix_diag_part(grad)
+@ops.RegisterGradient("MatrixDiag")
+def _MatrixDiagGrad(_, grad):
+  return array_ops.matrix_diag_part(grad)
 
 
-@ops.RegisterGradient("BatchMatrixDiagPart")
-def _BatchMatrixDiagPartGrad(_, grad):
-  return array_ops.batch_matrix_diag(grad)
-
-
-@ops.RegisterGradient("BatchMatrixSetDiag")
-def _BatchMatrixSetDiagGrad(op, grad):
-  diag_shape = op.inputs[1].get_shape()
-  diag_shape = diag_shape.merge_with(op.inputs[0].get_shape()[:-1])
-  diag_shape = diag_shape.merge_with(grad.get_shape()[:-1])
-  if diag_shape.is_fully_defined():
-    diag_shape = diag_shape.as_list()
+@ops.RegisterGradient("MatrixDiagPart")
+def _MatrixDiagPartGrad(op, grad):
+  matrix_shape = op.inputs[0].get_shape()[-2:]
+  if matrix_shape.is_fully_defined() and matrix_shape[0] == matrix_shape[1]:
+    return array_ops.matrix_diag(grad)
   else:
-    diag_shape = array_ops.shape(grad)
-    diag_shape = array_ops.slice(diag_shape, [0], [array_ops.rank(grad) - 1])
-  grad_input = array_ops.batch_matrix_set_diag(
-      grad, array_ops.zeros(diag_shape, dtype=grad.dtype))
-  grad_diag = array_ops.batch_matrix_diag_part(grad)
+    return array_ops.matrix_set_diag(array_ops.zeros_like(op.inputs[0]), grad)
+
+
+@ops.RegisterGradient("MatrixSetDiag")
+def _MatrixSetDiagGrad(op, grad):
+  input_shape = op.inputs[0].get_shape().merge_with(grad.get_shape())
+  diag_shape = op.inputs[1].get_shape()
+  batch_shape = input_shape[:-2].merge_with(diag_shape[:-1])
+  matrix_shape = input_shape[-2:]
+  if batch_shape.is_fully_defined() and matrix_shape.is_fully_defined():
+    diag_shape = batch_shape.as_list() + [min(matrix_shape.as_list())]
+  else:
+    with ops.colocate_with(grad):
+      grad_shape = array_ops.shape(grad)
+      grad_rank = array_ops.rank(grad)
+      batch_shape = array_ops.slice(grad_shape, [0], [grad_rank - 2])
+      matrix_shape = array_ops.slice(grad_shape, [grad_rank - 2], [2])
+      min_dim = math_ops.reduce_min(matrix_shape)
+      diag_shape = array_ops.concat(0, [batch_shape, [min_dim]])
+  grad_input = array_ops.matrix_set_diag(
+      grad, array_ops.zeros(
+          diag_shape, dtype=grad.dtype))
+  grad_diag = array_ops.matrix_diag_part(grad)
   return (grad_input, grad_diag)
 
 
-@ops.RegisterGradient("BatchMatrixBandPart")
-def _BatchMatrixBandPartGrad(op, grad):
+@ops.RegisterGradient("MatrixBandPart")
+def _MatrixBandPartGrad(op, grad):
   num_lower = op.inputs[1]
   num_upper = op.inputs[2]
-  return (array_ops.batch_matrix_band_part(grad, num_lower, num_upper), None,
-          None)
+  return (array_ops.matrix_band_part(grad, num_lower, num_upper), None, None)
 
 
 # Edit Distance has no gradient (but can be used to eval seq2seq or CTC).
-ops.NoGradient("EditDistance")
+ops.NotDifferentiable("EditDistance")
 
 
 @ops.RegisterGradient("Fill")
@@ -270,19 +294,20 @@ def _FillGrad(_, grad):
   return None, math_ops.reduce_sum(grad)
 
 
-ops.NoGradient("ZerosLike")
+ops.NotDifferentiable("ZerosLike")
 
 
 @ops.RegisterGradient("Gather")
 def _GatherGrad(op, grad):
   """Gradient for Gather op."""
+  # params can be large, so colocate the shape calculation with it.
   params = op.inputs[0]
-  indices = op.inputs[1]
-  # Colocate shape computations with params and indices
   with ops.colocate_with(params):
     params_shape = array_ops.shape(params)
-  with ops.colocate_with(indices):
-    size = array_ops.expand_dims(array_ops.size(indices), 0)
+
+  # Build appropriately shaped IndexedSlices
+  indices = op.inputs[1]
+  size = array_ops.expand_dims(array_ops.size(indices), 0)
   values_shape = array_ops.concat(0, [size, params_shape[1:]])
   values = array_ops.reshape(grad, values_shape)
   indices = array_ops.reshape(indices, size)
@@ -290,14 +315,19 @@ def _GatherGrad(op, grad):
 
 
 @ops.RegisterGradient("GatherNd")
-def _GatherNdGrad(unused_op, unused_grad):
-  raise NotImplementedError("Gradient for gather_nd is not implemented.")
+def _GatherNdGrad(op, grad):
+  ref = op.inputs[0]
+  ref_shape = array_ops.shape(ref)
+  indices = op.inputs[1]
+  ref_grad = array_ops.scatter_nd(indices, grad, ref_shape)
+  return [ref_grad, None]
 
 
 @ops.RegisterGradient("CheckNumerics")
 def _CheckNumericsGrad(_, grad):
   """Gradient for check_numerics op."""
-  return grad
+  return array_ops.check_numerics(
+      grad, "Not a number (NaN) or infinity (Inf) values detected in gradient.")
 
 
 @ops.RegisterGradient("Identity")
@@ -310,7 +340,7 @@ def _RefIdGrad(_, grad):
   return grad
 
 
-ops.NoGradient("StopGradient")
+ops.NotDifferentiable("StopGradient")
 
 
 @ops.RegisterGradient("Reshape")
@@ -318,7 +348,7 @@ def _ReshapeGrad(op, grad):
   return [array_ops.reshape(grad, array_ops.shape(op.inputs[0])), None]
 
 
-ops.NoGradient("InvertPermutation")
+ops.NotDifferentiable("InvertPermutation")
 
 
 def _ReshapeToInput(op, grad):
@@ -343,16 +373,16 @@ def _TransposeGrad(op, grad):
   return [array_ops.transpose(grad, array_ops.invert_permutation(p)), None]
 
 
-ops.NoGradient("Shape")
+ops.NotDifferentiable("Shape")
 
 
-ops.NoGradient("ShapeN")
+ops.NotDifferentiable("ShapeN")
 
 
-ops.NoGradient("Rank")
+ops.NotDifferentiable("Rank")
 
 
-ops.NoGradient("Size")
+ops.NotDifferentiable("Size")
 
 
 @ops.RegisterGradient("Tile")
@@ -377,10 +407,7 @@ def _TileGrad(op, grad):
   return [input_grad, None]
 
 
-ops.NoGradient("TileGrad")
-
-
-ops.NoGradient("BroadcastGradientArgs")
+ops.NotDifferentiable("BroadcastGradientArgs")
 
 
 @ops.RegisterGradient("Pad")
@@ -416,6 +443,12 @@ def _ReverseGrad(op, grad):
   return array_ops.reverse(grad, reverse_dims), None
 
 
+@ops.RegisterGradient("ReverseV2")
+def _ReverseV2Grad(op, grad):
+  axis = op.inputs[1]
+  return array_ops.reverse_v2(grad, axis), None
+
+
 @ops.RegisterGradient("SpaceToBatch")
 def _SpaceToBatchGrad(op, grad):
   # Its gradient is the opposite op: BatchToSpace.
@@ -424,12 +457,26 @@ def _SpaceToBatchGrad(op, grad):
           None]
 
 
+@ops.RegisterGradient("SpaceToBatchND")
+def _SpaceToBatchNDGrad(op, grad):
+  # Its gradient is the opposite op: BatchToSpaceND.
+  return [array_ops.batch_to_space_nd(grad, op.inputs[1], op.inputs[2]),
+          None, None]
+
+
 @ops.RegisterGradient("BatchToSpace")
 def _BatchToSpaceGrad(op, grad):
   # Its gradient is the opposite op: SpaceToBatch.
   block_size = op.get_attr("block_size")
   return [array_ops.space_to_batch(grad, op.inputs[1], block_size=block_size),
           None]
+
+
+@ops.RegisterGradient("BatchToSpaceND")
+def _BatchToSpaceNDGrad(op, grad):
+  # Its gradient is the opposite op: SpaceToBatchND.
+  return [array_ops.space_to_batch_nd(grad, op.inputs[1], op.inputs[2]),
+          None, None]
 
 
 @ops.RegisterGradient("SpaceToDepth")
@@ -446,7 +493,7 @@ def _DepthToSpaceGrad(op, grad):
   return array_ops.space_to_depth(grad, block_size)
 
 
-ops.NoGradient("OneHot")
+ops.NotDifferentiable("OneHot")
 
 
 @ops.RegisterGradient("MirrorPad")
@@ -476,6 +523,10 @@ def _ExtractImagePatchesGrad(op, grad):
   batch_size, rows_in, cols_in, channels = [
     dim.value for dim in op.inputs[0].get_shape()
   ]
+  input_bhwc = array_ops.shape(op.inputs[0])
+  batch_size = input_bhwc[0]
+  channels = input_bhwc[3]
+
   _, rows_out, cols_out, _ = [
     dim.value for dim in op.outputs[0].get_shape()
   ]
@@ -487,13 +538,13 @@ def _ExtractImagePatchesGrad(op, grad):
   ksize_r_eff = ksize_r + (ksize_r - 1) * (rate_r - 1)
   ksize_c_eff = ksize_c + (ksize_c - 1) * (rate_c - 1)
 
-  if padding == 'SAME':
+  if padding == b'SAME':
     rows_out = int(ceil(rows_in / stride_r))
     cols_out = int(ceil(cols_in / stride_h))
     pad_rows = ((rows_out - 1) * stride_r + ksize_r_eff - rows_in) // 2
     pad_cols = ((cols_out - 1) * stride_h + ksize_c_eff - cols_in) // 2
 
-  elif padding == 'VALID':
+  elif padding == b'VALID':
     rows_out = int(ceil((rows_in - ksize_r_eff + 1) / stride_r))
     cols_out = int(ceil((cols_in - ksize_c_eff + 1) / stride_h))
     pad_rows = (rows_out - 1) * stride_r + ksize_r_eff - rows_in
@@ -529,7 +580,7 @@ def _ExtractImagePatchesGrad(op, grad):
   sp_shape = (rows_in * cols_in,
               rows_out * cols_out * ksize_r * ksize_c)
 
-  sp_mat = ops.SparseTensor(
+  sp_mat = sparse_tensor.SparseTensor(
     array_ops.constant(idx, dtype=ops.dtypes.int64),
     array_ops.ones((len(idx),), dtype=ops.dtypes.float32),
     sp_shape
@@ -543,3 +594,10 @@ def _ExtractImagePatchesGrad(op, grad):
   grad_out = array_ops.transpose(grad_out, (2, 0, 1, 3))
 
   return [grad_out]
+
+
+@ops.RegisterGradient("ScatterNd")
+def _ScatterNdGrad(op, grad):
+  indices = op.inputs[0]
+  updates_grad = array_ops.gather_nd(grad, indices)
+  return [None, updates_grad, None]

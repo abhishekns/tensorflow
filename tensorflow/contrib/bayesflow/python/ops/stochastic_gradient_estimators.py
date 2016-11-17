@@ -58,13 +58,13 @@ from __future__ import print_function
 
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import variable_scope as vs
 from tensorflow.python.training import training
 from tensorflow.python.util.all_util import make_all
 
 
-def score_function(dist_tensor, value, loss, baseline=None,
+def score_function(stochastic_tensor, value, loss, baseline=None,
                    name="ScoreFunction"):
   """Score function estimator.
 
@@ -74,7 +74,7 @@ def score_function(dist_tensor, value, loss, baseline=None,
   It will add a `stop_gradient` to the advantage `(loss - baseline)`.
 
   Args:
-    dist_tensor: `DistributionTensor` p(x).
+    stochastic_tensor: `StochasticTensor` p(x).
     value: `Tensor` x. Samples from p(x).
     loss: `Tensor`.
     baseline: `Tensor` broadcastable to `loss`.
@@ -94,7 +94,7 @@ def score_function(dist_tensor, value, loss, baseline=None,
       advantage = loss
 
     advantage = array_ops.stop_gradient(advantage)
-    return dist_tensor.distribution.log_prob(value) * advantage
+    return stochastic_tensor.distribution.log_prob(value) * advantage
 
 
 def get_score_function_with_advantage(advantage_fn=None,
@@ -102,21 +102,21 @@ def get_score_function_with_advantage(advantage_fn=None,
   """Score function estimator with advantage function.
 
   Args:
-    advantage_fn: callable that takes the `DistributionTensor` and the
+    advantage_fn: callable that takes the `StochasticTensor` and the
       downstream `loss` and returns a `Tensor` advantage
       (e.g. `loss - baseline`).
     name: name to prepend ops with.
 
   Returns:
-    Callable score function estimator that takes the `DistributionTensor`, the
+    Callable score function estimator that takes the `StochasticTensor`, the
     sampled `value`, and the downstream `loss`, and uses the provided advantage.
   """
 
-  def score_function_with_advantage(dist_tensor, value, loss):
+  def score_function_with_advantage(stochastic_tensor, value, loss):
     with ops.name_scope(name, values=[value, loss]):
-      advantage = advantage_fn(dist_tensor, loss)
+      advantage = advantage_fn(stochastic_tensor, loss)
       advantage = array_ops.stop_gradient(advantage)
-      return dist_tensor.distribution.log_prob(value) * advantage
+      return stochastic_tensor.distribution.log_prob(value) * advantage
 
   return score_function_with_advantage
 
@@ -129,13 +129,13 @@ def get_score_function_with_constant_baseline(baseline, name="ScoreFunction"):
     name: name to prepend ops with.
 
   Returns:
-    Callable score function estimator that takes the `DistributionTensor`, the
+    Callable score function estimator that takes the `StochasticTensor`, the
     sampled `value`, and the downstream `loss`, and subtracts the provided
     `baseline` from the `loss`.
   """
 
-  def score_function_with_constant_baseline(dist_tensor, value, loss):
-    return score_function(dist_tensor, value, loss, baseline, name)
+  def score_function_with_constant_baseline(stochastic_tensor, value, loss):
+    return score_function(stochastic_tensor, value, loss, baseline, name)
 
   return score_function_with_constant_baseline
 
@@ -144,47 +144,51 @@ def get_score_function_with_baseline(baseline_fn=None, name="ScoreFunction"):
   """Score function estimator with baseline function.
 
   Args:
-    baseline_fn: callable that takes the `DistributionTensor` and the downstream
+    baseline_fn: callable that takes the `StochasticTensor` and the downstream
       `loss` and returns a `Tensor` baseline to be subtracted from the `loss`.
       If None, defaults to `get_mean_baseline`, which is an EMA of the loss.
     name: name to prepend ops with.
 
   Returns:
-    Callable score function estimator that takes the `DistributionTensor`, the
+    Callable score function estimator that takes the `StochasticTensor`, the
     sampled `value`, and the downstream `loss`, and subtracts the provided
     `baseline` from the `loss`.
   """
   if baseline_fn is None:
     baseline_fn = get_mean_baseline()
 
-  def score_function_with_baseline(dist_tensor, value, loss):
+  def score_function_with_baseline(stochastic_tensor, value, loss):
     with ops.name_scope(name):
-      b = baseline_fn(dist_tensor, loss)
-      return score_function(dist_tensor, value, loss, b)
+      b = baseline_fn(stochastic_tensor, loss)
+      return score_function(stochastic_tensor, value, loss, b)
 
   return score_function_with_baseline
 
 
-def get_mean_baseline(ema_decay=0.99, name="MeanBaseline"):
+def get_mean_baseline(ema_decay=0.99, name=None):
   """ExponentialMovingAverage baseline.
 
   Args:
     ema_decay: decay rate for the ExponentialMovingAverage.
-    name: name to prepend ops with.
+    name: name for variable scope of the ExponentialMovingAverage.
 
   Returns:
-    Callable baseline function that takes the `DistributionTensor` (unused) and
+    Callable baseline function that takes the `StochasticTensor` (unused) and
     the downstream `loss`, and returns an EMA of the loss.
   """
 
   def mean_baseline(_, loss):
-    with ops.name_scope(name):
+    with vs.variable_scope(name, default_name="MeanBaseline"):
+      reduced_loss = math_ops.reduce_mean(loss)
+
       ema = training.ExponentialMovingAverage(decay=ema_decay)
-      update_op = ema.apply(math_ops.reduce_mean(loss))
-      with control_flow_ops.control_dependencies([update_op]):
-        # TODO(rsepassi): Possibly implement the initialization bias correction
-        # term from Adam (section 3 of https://arxiv.org/pdf/1412.6980v8.pdf).
-        baseline = ema.average(loss)
+      update_op = ema.apply([reduced_loss])
+
+      with ops.control_dependencies([update_op]):
+        # Using `identity` causes an op to be added in this context, which
+        # triggers the update. Removing the `identity` means nothing is updated.
+        baseline = array_ops.identity(ema.average(reduced_loss))
+
       return baseline
 
   return mean_baseline

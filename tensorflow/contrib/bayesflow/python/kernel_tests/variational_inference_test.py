@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-sg = tf.contrib.bayesflow.stochastic_graph
+st = tf.contrib.bayesflow.stochastic_tensor
 vi = tf.contrib.bayesflow.variational_inference
 distributions = tf.contrib.distributions
 
@@ -43,8 +43,8 @@ def generative_net(z, data_size):
 def mini_vae():
   x = [[-6., 3., 6.], [-8., 4., 8.]]
   prior = distributions.Normal(mu=0., sigma=1.)
-  variational = sg.DistributionTensor(
-      distributions.Normal, mu=inference_net(x, 1), sigma=1.)
+  variational = st.StochasticTensor(
+      distributions.Normal(mu=inference_net(x, 1), sigma=1.))
   vi.register_prior(variational, prior)
   px = distributions.Normal(mu=generative_net(variational, 3), sigma=1.)
   log_likelihood = tf.reduce_sum(px.log_prob(x), 1)
@@ -60,7 +60,7 @@ class VariationalInferenceTest(tf.test.TestCase):
     expected_elbo = log_likelihood - tf.contrib.distributions.kl(
         variational.distribution, prior)
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertAllEqual(*sess.run([expected_elbo, elbo]))
 
   def testExplicitVariationalAndPrior(self):
@@ -71,7 +71,7 @@ class VariationalInferenceTest(tf.test.TestCase):
           log_likelihood, variational_with_prior={variational: prior})
       expected_elbo = log_likelihood - tf.contrib.distributions.kl(
           variational.distribution, prior)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertAllEqual(*sess.run([expected_elbo, elbo]))
 
   def testExplicitForms(self):
@@ -88,7 +88,7 @@ class VariationalInferenceTest(tf.test.TestCase):
       elbos.append(elbo)
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       log_likelihood_shape = tf.shape(log_likelihood).eval()
       for elbo in elbos:
         elbo.eval()
@@ -100,8 +100,8 @@ class VariationalInferenceTest(tf.test.TestCase):
     x = tf.constant([[-6., 3., 6.]])
 
     prior = distributions.Bernoulli(0.5)
-    variational = sg.DistributionTensor(
-        NormalNoEntropy, mu=inference_net(x, 1), sigma=1.)
+    variational = st.StochasticTensor(
+        NormalNoEntropy(mu=inference_net(x, 1), sigma=1.))
     vi.register_prior(variational, prior)
     px = distributions.Normal(mu=generative_net(variational, 3), sigma=1.)
     log_likelihood = tf.reduce_sum(px.log_prob(x), 1)
@@ -117,7 +117,7 @@ class VariationalInferenceTest(tf.test.TestCase):
         variational) - variational.distribution.log_prob(variational)
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertAllEqual(*sess.run([expected_elbo, elbo]))
 
   def testElboWithLogJoint(self):
@@ -125,7 +125,7 @@ class VariationalInferenceTest(tf.test.TestCase):
       _, prior, variational, _, log_likelihood = mini_vae()
       log_joint = log_likelihood + prior.log_prob(variational)
       elbo = vi.elbo_with_log_joint(log_joint)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       elbo.eval()
 
 
