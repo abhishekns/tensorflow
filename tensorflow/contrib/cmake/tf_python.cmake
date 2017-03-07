@@ -6,7 +6,7 @@
 # * No support for tf.contrib. (TODO(mrry): Add rules for building op libraries.)
 # * No support for Python 3. (TODO(mrry): Add override for FindPythonInterp.)
 #
-# The _pywrap_tensorflow target builds everything.
+# The _pywrap_tensorflow_internal target builds everything.
 
 ########################################################
 # Resolve installed dependencies
@@ -68,7 +68,7 @@ function(RELATIVE_PROTOBUF_GENERATE_PYTHON ROOT_DIR SRCS)
     add_custom_command(
       OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tf_python/${REL_DIR}/${FIL_WE}_pb2.py"
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS --python_out  ${CMAKE_CURRENT_BINARY_DIR}/tf_python/ -I ${ROOT_DIR} -I ${PROTOBUF_INCLUDE_DIRS} ${ABS_FIL} 
+      ARGS --python_out  ${CMAKE_CURRENT_BINARY_DIR}/tf_python/ -I ${ROOT_DIR} -I ${PROTOBUF_INCLUDE_DIRS} ${ABS_FIL}
       DEPENDS ${PROTOBUF_PROTOC_EXECUTABLE} protobuf
       COMMENT "Running Python protocol buffer compiler on ${FIL}"
       VERBATIM )
@@ -113,17 +113,27 @@ file(GLOB_RECURSE tf_protos_python_srcs RELATIVE ${tensorflow_source_dir}
     "${tensorflow_source_dir}/tensorflow/python/*.proto"
     "${tensorflow_source_dir}/tensorflow/contrib/session_bundle/*.proto"
     "${tensorflow_source_dir}/tensorflow/contrib/tensorboard/*.proto"
+    "${tensorflow_source_dir}/tensorflow/contrib/training/*.proto"
 )
 RELATIVE_PROTOBUF_GENERATE_PYTHON(
     ${tensorflow_source_dir} PYTHON_PROTO_GENFILES ${tf_protos_python_srcs}
 )
 
+# NOTE(mrry): Avoid regenerating the tensorflow/core protos because this
+# can cause benign-but-failing-on-Windows-due-to-file-locking conflicts
+# when two rules attempt to generate the same file.
+file(GLOB_RECURSE tf_python_protos_cc_srcs RELATIVE ${tensorflow_source_dir}
+    "${tensorflow_source_dir}/tensorflow/python/*.proto"
+    "${tensorflow_source_dir}/tensorflow/contrib/session_bundle/*.proto"
+    "${tensorflow_source_dir}/tensorflow/contrib/tensorboard/*.proto"
+    "${tensorflow_source_dir}/tensorflow/contrib/training/*.proto"
+)
 RELATIVE_PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS
-    ${tensorflow_source_dir} ${tf_protos_python_srcs}
+    ${tensorflow_source_dir} ${tf_python_protos_cc_srcs}
 )
 
 add_library(tf_python_protos_cc ${PROTO_SRCS} ${PROTO_HDRS})
-
+add_dependencies(tf_python_protos_cc tf_protos_cc)
 
 # tf_python_touchup_modules adds empty __init__.py files to all
 # directories containing Python code, so that Python will recognize
@@ -141,7 +151,7 @@ function(add_python_module MODULE_NAME)
     set(options DONTCOPY)
     cmake_parse_arguments(ADD_PYTHON_MODULE "${options}" "" "" ${ARGN})
     add_custom_command(TARGET tf_python_touchup_modules PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tf_python/${MODULE_NAME}") 
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tf_python/${MODULE_NAME}")
     add_custom_command(TARGET tf_python_touchup_modules PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/tf_python/${MODULE_NAME}/__init__.py")
     file(GLOB module_python_srcs RELATIVE ${tensorflow_source_dir}
@@ -164,21 +174,31 @@ add_python_module("tensorflow/core/lib")
 add_python_module("tensorflow/core/lib/core")
 add_python_module("tensorflow/core/protobuf")
 add_python_module("tensorflow/core/util")
+add_python_module("tensorflow/examples")
+add_python_module("tensorflow/examples/tutorials")
+add_python_module("tensorflow/examples/tutorials/mnist")
 add_python_module("tensorflow/python")
 add_python_module("tensorflow/python/client")
 add_python_module("tensorflow/python/debug")
 add_python_module("tensorflow/python/debug/cli")
 add_python_module("tensorflow/python/debug/examples")
+add_python_module("tensorflow/python/debug/lib")
 add_python_module("tensorflow/python/debug/wrappers")
+add_python_module("tensorflow/python/estimator")
+add_python_module("tensorflow/python/estimator/inputs")
+add_python_module("tensorflow/python/estimator/inputs/queues")
 add_python_module("tensorflow/python/framework")
 add_python_module("tensorflow/python/kernel_tests")
+add_python_module("tensorflow/python/layers")
 add_python_module("tensorflow/python/lib")
 add_python_module("tensorflow/python/lib/core")
 add_python_module("tensorflow/python/lib/io")
 add_python_module("tensorflow/python/ops")
+add_python_module("tensorflow/python/ops/losses")
 add_python_module("tensorflow/python/platform")
 add_python_module("tensorflow/python/platform/default")
 add_python_module("tensorflow/python/platform/summary")
+add_python_module("tensorflow/python/saved_model")
 add_python_module("tensorflow/python/summary")
 add_python_module("tensorflow/python/summary/impl")
 add_python_module("tensorflow/python/summary/writer")
@@ -187,8 +207,14 @@ add_python_module("tensorflow/python/training")
 add_python_module("tensorflow/python/user_ops")
 add_python_module("tensorflow/python/util")
 add_python_module("tensorflow/python/util/protobuf")
-
-add_python_module("tensorflow/contrib/")
+add_python_module("tensorflow/tensorboard")
+add_python_module("tensorflow/tensorboard/backend")
+add_python_module("tensorflow/tensorboard/lib/python")
+add_python_module("tensorflow/tensorboard/plugins")
+add_python_module("tensorflow/tensorboard/plugins/debugger")
+add_python_module("tensorflow/tensorboard/plugins/projector")
+add_python_module("tensorflow/tensorboard/scripts")
+add_python_module("tensorflow/contrib")
 add_python_module("tensorflow/contrib/android")
 add_python_module("tensorflow/contrib/android/java")
 add_python_module("tensorflow/contrib/android/java/org")
@@ -202,6 +228,7 @@ add_python_module("tensorflow/contrib/bayesflow/examples/reinforce_simple")
 add_python_module("tensorflow/contrib/bayesflow/python")
 add_python_module("tensorflow/contrib/bayesflow/python/kernel_tests")
 add_python_module("tensorflow/contrib/bayesflow/python/ops")
+add_python_module("tensorflow/contrib/compiler")
 add_python_module("tensorflow/contrib/copy_graph")
 add_python_module("tensorflow/contrib/copy_graph/python")
 add_python_module("tensorflow/contrib/copy_graph/python/util")
@@ -215,10 +242,12 @@ add_python_module("tensorflow/contrib/cudnn_rnn/ops")
 add_python_module("tensorflow/contrib/cudnn_rnn/python")
 add_python_module("tensorflow/contrib/cudnn_rnn/python/kernel_tests")
 add_python_module("tensorflow/contrib/cudnn_rnn/python/ops")
+add_python_module("tensorflow/contrib/deprecated")
 add_python_module("tensorflow/contrib/distributions")
 add_python_module("tensorflow/contrib/distributions/python")
 add_python_module("tensorflow/contrib/distributions/python/kernel_tests")
 add_python_module("tensorflow/contrib/distributions/python/ops")
+add_python_module("tensorflow/contrib/distributions/python/ops/bijectors")
 add_python_module("tensorflow/contrib/factorization")
 add_python_module("tensorflow/contrib/factorization/examples")
 add_python_module("tensorflow/contrib/factorization/kernels")
@@ -242,6 +271,13 @@ add_python_module("tensorflow/contrib/grid_rnn")
 add_python_module("tensorflow/contrib/grid_rnn/python")
 add_python_module("tensorflow/contrib/grid_rnn/python/kernel_tests")
 add_python_module("tensorflow/contrib/grid_rnn/python/ops")
+add_python_module("tensorflow/contrib/hooks")
+add_python_module("tensorflow/contrib/image")
+add_python_module("tensorflow/contrib/image/python")
+add_python_module("tensorflow/contrib/image/python/ops")
+add_python_module("tensorflow/contrib/input_pipeline")
+add_python_module("tensorflow/contrib/input_pipeline/python")
+add_python_module("tensorflow/contrib/input_pipeline/python/ops")
 add_python_module("tensorflow/contrib/integrate")
 add_python_module("tensorflow/contrib/integrate/python")
 add_python_module("tensorflow/contrib/integrate/python/ops")
@@ -256,6 +292,9 @@ add_python_module("tensorflow/contrib/ios_examples/camera/en.lproj")
 add_python_module("tensorflow/contrib/ios_examples/simple")
 add_python_module("tensorflow/contrib/ios_examples/simple/data")
 add_python_module("tensorflow/contrib/ios_examples/simple/tf_ios_makefile_example.xcodeproj")
+add_python_module("tensorflow/contrib/labeled_tensor")
+add_python_module("tensorflow/contrib/labeled_tensor/python")
+add_python_module("tensorflow/contrib/labeled_tensor/python/ops")
 add_python_module("tensorflow/contrib/layers")
 add_python_module("tensorflow/contrib/layers/kernels")
 add_python_module("tensorflow/contrib/layers/ops")
@@ -279,6 +318,13 @@ add_python_module("tensorflow/contrib/learn/python/learn/preprocessing/tests")
 add_python_module("tensorflow/contrib/learn/python/learn/tests")
 add_python_module("tensorflow/contrib/learn/python/learn/tests/dataframe")
 add_python_module("tensorflow/contrib/learn/python/learn/utils")
+add_python_module("tensorflow/contrib/legacy_seq2seq")
+add_python_module("tensorflow/contrib/legacy_seq2seq/python")
+add_python_module("tensorflow/contrib/legacy_seq2seq/python/ops")
+add_python_module("tensorflow/contrib/linalg")
+add_python_module("tensorflow/contrib/linalg/python")
+add_python_module("tensorflow/contrib/linalg/python/ops")
+add_python_module("tensorflow/contrib/linalg/python/kernel_tests")
 add_python_module("tensorflow/contrib/linear_optimizer")
 add_python_module("tensorflow/contrib/linear_optimizer/kernels")
 add_python_module("tensorflow/contrib/linear_optimizer/kernels/g3doc")
@@ -291,6 +337,12 @@ add_python_module("tensorflow/contrib/losses/python")
 add_python_module("tensorflow/contrib/losses/python/losses")
 add_python_module("tensorflow/contrib/makefile")
 add_python_module("tensorflow/contrib/makefile/test")
+add_python_module("tensorflow/contrib/memory_stats")
+add_python_module("tensorflow/contrib/memory_stats/kernels")
+add_python_module("tensorflow/contrib/memory_stats/ops")
+add_python_module("tensorflow/contrib/memory_stats/python")
+add_python_module("tensorflow/contrib/memory_stats/python/kernel_tests")
+add_python_module("tensorflow/contrib/memory_stats/python/ops")
 add_python_module("tensorflow/contrib/metrics")
 add_python_module("tensorflow/contrib/metrics/kernels")
 add_python_module("tensorflow/contrib/metrics/ops")
@@ -300,6 +352,9 @@ add_python_module("tensorflow/contrib/metrics/python/metrics")
 add_python_module("tensorflow/contrib/metrics/python/ops")
 add_python_module("tensorflow/contrib/ndlstm")
 add_python_module("tensorflow/contrib/ndlstm/python")
+add_python_module("tensorflow/contrib/nn")
+add_python_module("tensorflow/contrib/nn/python")
+add_python_module("tensorflow/contrib/nn/python/ops")
 add_python_module("tensorflow/contrib/opt")
 add_python_module("tensorflow/contrib/opt/python")
 add_python_module("tensorflow/contrib/opt/python/training")
@@ -329,8 +384,15 @@ add_python_module("tensorflow/contrib/slim/python")
 add_python_module("tensorflow/contrib/slim/python/slim")
 add_python_module("tensorflow/contrib/slim/python/slim/data")
 add_python_module("tensorflow/contrib/slim/python/slim/nets")
+add_python_module("tensorflow/contrib/solvers")
+add_python_module("tensorflow/contrib/solvers/python")
+add_python_module("tensorflow/contrib/solvers/python/ops")
+add_python_module("tensorflow/contrib/sparsemax")
+add_python_module("tensorflow/contrib/sparsemax/python")
+add_python_module("tensorflow/contrib/sparsemax/python/ops")
 add_python_module("tensorflow/contrib/specs")
 add_python_module("tensorflow/contrib/specs/python")
+add_python_module("tensorflow/contrib/stat_summarizer")
 add_python_module("tensorflow/contrib/tensorboard")
 add_python_module("tensorflow/contrib/tensorboard/plugins")
 add_python_module("tensorflow/contrib/tensorboard/plugins/projector")
@@ -350,10 +412,6 @@ add_python_module("tensorflow/contrib/tensor_forest/hybrid/python/ops")
 add_python_module("tensorflow/contrib/tensor_forest/python")
 add_python_module("tensorflow/contrib/tensor_forest/python/kernel_tests")
 add_python_module("tensorflow/contrib/tensor_forest/python/ops")
-add_python_module("tensorflow/contrib/tensorboard")
-add_python_module("tensorflow/contrib/tensorboard")
-add_python_module("tensorflow/contrib/tensorboard/plugins")
-add_python_module("tensorflow/contrib/tensorboard/plugins/projector")
 add_python_module("tensorflow/contrib/testing")
 add_python_module("tensorflow/contrib/testing/python")
 add_python_module("tensorflow/contrib/testing/python/framework")
@@ -365,6 +423,13 @@ add_python_module("tensorflow/contrib/training")
 add_python_module("tensorflow/contrib/training/python")
 add_python_module("tensorflow/contrib/training/python/training")
 add_python_module("tensorflow/contrib/util")
+
+
+# Additional directories with no Python sources.
+add_custom_command(TARGET tf_python_touchup_modules PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/dist")
+add_custom_command(TARGET tf_python_touchup_modules PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/lib/css")
 
 
 ########################################################
@@ -391,16 +456,22 @@ set(tf_python_op_lib_names
 )
 
 function(GENERATE_PYTHON_OP_LIB tf_python_op_lib_name)
+    set(options SHAPE_FUNCTIONS_NOT_REQUIRED)
     set(oneValueArgs DESTINATION)
     set(multiValueArgs ADDITIONAL_LIBRARIES)
     cmake_parse_arguments(GENERATE_PYTHON_OP_LIB
-      "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+      "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if(NOT DEFINED GENERATE_PYTHON_OP_LIB_DESTINATION)
       # Default destination is tf_python/tensorflow/python/ops/gen_<...>.py.
       set(GENERATE_PYTHON_OP_LIB_DESTINATION
           "${python_ops_target_dir}/gen_${tf_python_op_lib_name}.py")
     endif()
-
+    if(GENERATE_PYTHON_OP_LIB_SHAPE_FUNCTIONS_NOT_REQUIRED)
+      set(require_shape_fn 0)
+    else()
+      set(require_shape_fn 1)
+    endif()
+    
     # Create a C++ executable that links in the appropriate op
     # registrations and generates Python wrapper code based on the
     # registered ops.
@@ -421,10 +492,10 @@ function(GENERATE_PYTHON_OP_LIB tf_python_op_lib_name)
     # containing the wrappers.
     add_custom_command(
       OUTPUT ${GENERATE_PYTHON_OP_LIB_DESTINATION}
-      COMMAND ${tf_python_op_lib_name}_gen_python @${tensorflow_source_dir}/tensorflow/python/ops/hidden_ops.txt 1 > ${GENERATE_PYTHON_OP_LIB_DESTINATION}
+      COMMAND ${tf_python_op_lib_name}_gen_python @${tensorflow_source_dir}/tensorflow/python/ops/hidden_ops.txt ${require_shape_fn} > ${GENERATE_PYTHON_OP_LIB_DESTINATION}
       DEPENDS ${tf_python_op_lib_name}_gen_python
     )
-    
+
     set(tf_python_ops_generated_files ${tf_python_ops_generated_files}
         ${GENERATE_PYTHON_OP_LIB_DESTINATION} PARENT_SCOPE)
 endfunction()
@@ -447,6 +518,7 @@ GENERATE_PYTHON_OP_LIB("random_ops")
 GENERATE_PYTHON_OP_LIB("resource_variable_ops")
 GENERATE_PYTHON_OP_LIB("script_ops")
 GENERATE_PYTHON_OP_LIB("sdca_ops")
+GENERATE_PYTHON_OP_LIB("set_ops")
 GENERATE_PYTHON_OP_LIB("state_ops")
 GENERATE_PYTHON_OP_LIB("sparse_ops")
 GENERATE_PYTHON_OP_LIB("string_ops")
@@ -462,6 +534,10 @@ GENERATE_PYTHON_OP_LIB("contrib_factorization_factorization_ops"
   DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/factorization/python/ops/gen_factorization_ops.py)
 GENERATE_PYTHON_OP_LIB("contrib_framework_variable_ops"
   DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/framework/python/ops/gen_variable_ops.py)
+GENERATE_PYTHON_OP_LIB("contrib_memory_stats_ops"
+  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/memory_stats/ops/gen_memory_stats_ops.py)
+GENERATE_PYTHON_OP_LIB("contrib_tensor_forest_ops"
+	  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/tensor_forest/python/ops/gen_tensor_forest_ops.py)
 
 add_custom_target(tf_python_ops SOURCES ${tf_python_ops_generated_files} ${PYTHON_PROTO_GENFILES})
 add_dependencies(tf_python_ops tf_python_op_gen_main)
@@ -473,28 +549,31 @@ add_dependencies(tf_python_ops tf_python_op_gen_main)
 
 find_package(SWIG REQUIRED)
 # Generate the C++ and Python source code for the SWIG wrapper.
+# NOTE(mrry): We always regenerate the SWIG wrapper, which means that we must
+# always re-link the Python extension, but we don't have to track the
+# individual headers on which the SWIG wrapper depends.
 add_custom_command(
-      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/pywrap_tensorflow.py"
-             "${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow.cc"
-      DEPENDS tf_python_touchup_modules
+      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/pywrap_tensorflow_internal.py"
+             "${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow_internal.cc"
+      DEPENDS tf_python_touchup_modules __force_rebuild
       COMMAND ${SWIG_EXECUTABLE}
       ARGS -python -c++
            -I${tensorflow_source_dir}
            -I${CMAKE_CURRENT_BINARY_DIR}
-           -module pywrap_tensorflow
+           -module pywrap_tensorflow_internal
            -outdir ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python
-           -o ${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow.cc
+           -o ${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow_internal.cc
            -globals ''
            ${tensorflow_source_dir}/tensorflow/python/tensorflow.i
       COMMENT "Running SWIG to generate Python wrappers"
       VERBATIM )
 
-# pywrap_tensorflow is a shared library containing all of the TensorFlow
-# runtime and the standard ops and kernels. These are installed into
+# pywrap_tensorflow_internal is a shared library containing all of the
+# TensorFlow runtime and the standard ops and kernels. These are installed into
 # tf_python/tensorflow/python/.
 # TODO(mrry): Refactor this to expose a framework library that
 # facilitates `tf.load_op_library()`.
-add_library(pywrap_tensorflow SHARED
+add_library(pywrap_tensorflow_internal SHARED
     "${tensorflow_source_dir}/tensorflow/python/client/tf_session_helper.h"
     "${tensorflow_source_dir}/tensorflow/python/client/tf_session_helper.cc"
     "${tensorflow_source_dir}/tensorflow/python/framework/cpp_shape_inference.h"
@@ -517,25 +596,27 @@ add_library(pywrap_tensorflow SHARED
     "${tensorflow_source_dir}/tensorflow/c/checkpoint_reader.h"
     "${tensorflow_source_dir}/tensorflow/c/tf_status_helper.cc"
     "${tensorflow_source_dir}/tensorflow/c/tf_status_helper.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow.cc"
+    "${CMAKE_CURRENT_BINARY_DIR}/pywrap_tensorflow_internal.cc"
     $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
+    $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
     $<$<BOOL:${tensorflow_ENABLE_GRPC_SUPPORT}>:$<TARGET_OBJECTS:tf_core_distributed_runtime>>
     $<TARGET_OBJECTS:tf_core_kernels>
+    $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_core_kernels_cpu_only>>
     $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
 )
-target_include_directories(pywrap_tensorflow PUBLIC
+target_include_directories(pywrap_tensorflow_internal PUBLIC
     ${PYTHON_INCLUDE_DIR}
     ${NUMPY_INCLUDE_DIR}
 )
-target_link_libraries(pywrap_tensorflow
+target_link_libraries(pywrap_tensorflow_internal
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
     tf_protos_cc
-		tf_python_protos_cc
+    tf_python_protos_cc
     ${PYTHON_LIBRARIES}
 )
 
@@ -544,21 +625,22 @@ target_link_libraries(pywrap_tensorflow
 ############################################################
 add_custom_target(tf_python_build_pip_package)
 add_dependencies(tf_python_build_pip_package
-    pywrap_tensorflow
+    pywrap_tensorflow_internal
+    tensorboard_copy_dependencies
     tf_python_copy_scripts_to_destination
     tf_python_touchup_modules
     tf_python_ops)
 add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/cmake/setup.py
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tools/pip_package/setup.py
                                    ${CMAKE_CURRENT_BINARY_DIR}/tf_python/)
 if(WIN32)
   add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/pywrap_tensorflow.dll
-                                     ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/_pywrap_tensorflow.pyd)
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/pywrap_tensorflow_internal.dll
+                                     ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/_pywrap_tensorflow_internal.pyd)
 else()
   add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/libpywrap_tensorflow.so
-                                     ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/_pywrap_tensorflow.so)
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/libpywrap_tensorflow_internal.so
+                                     ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/python/_pywrap_tensorflow_internal.so)
 endif()
 add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tools/pip_package/README
@@ -566,6 +648,47 @@ add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
 add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tools/pip_package/MANIFEST.in
                                    ${CMAKE_CURRENT_BINARY_DIR}/tf_python/)
+
+# Copy resources for TensorBoard.
 add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/tf_python/setup.py bdist_wheel
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tf_python)
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tensorboard/dist/bazel-html-imports.html
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/dist/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tensorboard/dist/index.html
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/dist/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tensorboard/dist/tf-tensorboard.html
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/dist/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tensorboard/lib/css/global.css
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/lib/css/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/tensorboard/TAG
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/tensorboard/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/tensorboard_external
+                                             ${CMAKE_CURRENT_BINARY_DIR}/tf_python/external)
+
+# Copy datasets for tf.contrib.learn.
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/boston_house_prices.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/iris.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/text_test.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/text_train.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+					   
+if(${tensorflow_ENABLE_GPU})
+  add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/tf_python/setup.py bdist_wheel --project_name tensorflow_gpu
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tf_python)
+else()
+  add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/tf_python/setup.py bdist_wheel
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tf_python)
+endif(${tensorflow_ENABLE_GPU})
